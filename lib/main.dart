@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'dart:developer';
+import 'package:firebase_database/firebase_database.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -11,6 +13,17 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Check Firebase Database connection
+  try {
+    final ref = FirebaseDatabase.instance.ref();
+    var offer = await ref.get();
+    print(offer.value); //TODO: Delete print statement
+
+    log("Firebase Database connected successfully!");
+  } catch (e) {
+    log("Failed to connect to Firebase Database: $e");
+  }
 
   runApp(const MyApp());
 }
