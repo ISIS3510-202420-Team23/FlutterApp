@@ -2,12 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'dart:developer';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:logging/logging.dart';
+import 'package:logging_to_logcat/logging_to_logcat.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env"); // Load .env file
+
+  Logger.root.level = Level.ALL;
+  Logger.root.activateLogcat();
+  final Logger log = Logger('Main');
 
   // Use the dynamically generated Firebase options based on the platform
   await Firebase.initializeApp(
@@ -18,11 +23,11 @@ void main() async {
   try {
     final ref = FirebaseDatabase.instance.ref();
     var offer = await ref.get();
-    print(offer.value); //TODO: Delete print statement
+    log.info(offer.value); //TODO: Delete print statement
 
-    log("Firebase Database connected successfully!");
+    log.info("Firebase Database connected successfully!");
   } catch (e) {
-    log("Failed to connect to Firebase Database: $e");
+    log.shout("Failed to connect to Firebase Database: $e");
   }
 
   runApp(const MyApp());

@@ -38,6 +38,8 @@ dependencies:
   firebase_core: ^3.4.1
   flutter_dotenv: ^5.1.0
   firebase_database: ^11.1.2
+  logging_to_logcat: ^1.0.3
+  logging: ^1.2.0
 
 dev_dependencies:
   flutter_test:
