@@ -5,7 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(); // Load .env file
+  await dotenv.load(fileName: ".env"); // Load .env file
 
   // Use the dynamically generated Firebase options based on the platform
   await Firebase.initializeApp(
@@ -17,7 +17,6 @@ void main() async {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
 
   // This widget is the root of your application.
   @override
