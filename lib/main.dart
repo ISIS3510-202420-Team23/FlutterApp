@@ -2,35 +2,37 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:firebase_database/firebase_database.dart';
 import 'package:logging/logging.dart';
 import 'package:logging_to_logcat/logging_to_logcat.dart';
 
 void main() async {
+  _initializeApp();
+
+  runApp(const MyApp());
+}
+
+/// Initialize the app
+Future<void> _initializeApp() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: ".env"); // Load .env file
 
-  Logger.root.level = Level.ALL;
-  Logger.root.activateLogcat();
-  final Logger log = Logger('Main');
+  // Load environment variables from .env file
+  await dotenv.load(fileName: ".env");
 
-  // Use the dynamically generated Firebase options based on the platform
+  // Initialize Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Check Firebase Database connection
-  try {
-    final ref = FirebaseDatabase.instance.ref();
-    var offer = await ref.get();
-    log.info(offer.value); //TODO: Delete print statement
+  // Set up logging
+  _setupLogging();
+}
 
-    log.info("Firebase Database connected successfully!");
-  } catch (e) {
-    log.shout("Failed to connect to Firebase Database: $e");
-  }
-
-  runApp(const MyApp());
+/// Set up logging
+void _setupLogging() {
+  Logger.root.level = Level.ALL; // Set the logging level
+  Logger.root.activateLogcat(); // Enable Logcat logging on Android
+  final Logger log = Logger('Main');
+  log.info('App initialized successfully!');
 }
 
 class MyApp extends StatelessWidget {

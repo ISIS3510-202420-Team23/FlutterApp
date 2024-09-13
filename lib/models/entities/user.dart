@@ -1,29 +1,29 @@
 class User {
   final String email;
-  final bool isAndes;
+  final bool is_andes;
   final String name;
   final int phone;
-  final String typeUser;
-  final List<int>? favoriteOffers;
+  final String type_user;
+  final List<int>? favorite_offers;
 
   User({
     required this.email,
-    required this.isAndes,
+    required this.is_andes,
     required this.name,
     required this.phone,
-    required this.typeUser,
-    this.favoriteOffers,
+    required this.type_user,
+    this.favorite_offers,
   });
 
   // Factory method to create a User object from JSON
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
       email: json['email'],
-      isAndes: json['is_andes'],
+      is_andes: json['is_andes'],
       name: json['name'],
       phone: json['phone'],
-      typeUser: json['type_user'],
-      favoriteOffers: json['favorite_offers'] != null
+      type_user: json['type_user'],
+      favorite_offers: json['favorite_offers'] != null
           ? List<int>.from(json['favorite_offers'])
           : null,
     );
@@ -33,11 +33,11 @@ class User {
   Map<String, dynamic> toJson() {
     return {
       'email': email,
-      'is_andes': isAndes,
+      'is_andes': is_andes,
       'name': name,
       'phone': phone,
-      'type_user': typeUser,
-      'favorite_offers': favoriteOffers,
+      'type_user': type_user,
+      'favorite_offers': favorite_offers,
     };
   }
 
@@ -52,11 +52,11 @@ class User {
   }) {
     return User(
       email: email ?? this.email,
-      isAndes: isAndes ?? this.isAndes,
+      is_andes: isAndes ?? is_andes,
       name: name ?? this.name,
       phone: phone ?? this.phone,
-      typeUser: typeUser ?? this.typeUser,
-      favoriteOffers: favoriteOffers ?? this.favoriteOffers,
+      type_user: typeUser ?? type_user,
+      favorite_offers: favoriteOffers ?? favorite_offers,
     );
   }
 }
