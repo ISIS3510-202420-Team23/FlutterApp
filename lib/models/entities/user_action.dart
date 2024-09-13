@@ -1,13 +1,13 @@
 class UserAction {
   final String action;
-  final String userId;
-  final int propertyId;
+  final String user_id;
+  final int property_id;
   final DateTime timestamp;
 
   UserAction({
     required this.action,
-    required this.userId,
-    required this.propertyId,
+    required this.user_id,
+    required this.property_id,
     required this.timestamp,
   });
 
@@ -15,8 +15,8 @@ class UserAction {
   factory UserAction.fromJson(Map<String, dynamic> json) {
     return UserAction(
       action: json['action'],
-      userId: json['user_id'],
-      propertyId: json['property_id'],
+      user_id: json['user_id'],
+      property_id: json['property_id'],
       timestamp: DateTime.parse(json['timestamp']),
     );
   }
@@ -25,8 +25,8 @@ class UserAction {
   Map<String, dynamic> toJson() {
     return {
       'action': action,
-      'user_id': userId,
-      'property_id': propertyId,
+      'user_id': user_id,
+      'property_id': property_id,
       'timestamp': timestamp.toIso8601String(),
     };
   }
@@ -40,8 +40,8 @@ class UserAction {
   }) {
     return UserAction(
       action: action ?? this.action,
-      userId: userId ?? this.userId,
-      propertyId: propertyId ?? this.propertyId,
+      user_id: userId ?? user_id,
+      property_id: propertyId ?? property_id,
       timestamp: timestamp ?? this.timestamp,
     );
   }
