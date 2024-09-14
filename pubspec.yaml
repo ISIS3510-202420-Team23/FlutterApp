@@ -30,14 +30,19 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_bloc: ^8.0.0
+  equatable: ^2.0.3
+  firebase_auth: ^5.2.1
+  firebase_core: ^3.4.1 # Update this to match firebase_database requirements
+  firebase_database: ^11.1.2
+  google_sign_in: ^5.0.7
+  flutter_signin_button: ^2.0.0
 
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
-  firebase_core: ^3.4.1
   flutter_dotenv: ^5.1.0
-  firebase_database: ^11.1.2
   logging_to_logcat: ^1.0.3
   logging: ^1.2.0
 
@@ -66,6 +71,23 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - .env
+    - lib/assets/Andlet.png
+    - lib/assets/Andletlogosf.png
+    - lib/assets/1.svg
+    - lib/assets/2.svg
+    - lib/assets/google.png
+  fonts:
+    - family: League Spartan
+      fonts:
+        - asset: lib/assets/fonts/League_Spartan/static/LeagueSpartan-Bold.ttf
+        - asset: lib/assets/fonts/League_Spartan/static/LeagueSpartan-Regular.ttf
+        - asset: lib/assets/fonts/League_Spartan/static/LeagueSpartan-Light.ttf
+        - asset: lib/assets/fonts/League_Spartan/static/LeagueSpartan-ExtraBold.ttf
+    - family: Montserrat
+      fonts:
+        - asset: lib/assets/fonts/Montserrat/static/Montserrat-Bold.ttf
+        - asset: lib/assets/fonts/Montserrat/static/Montserrat-Regular.ttf
+        - asset: lib/assets/fonts/Montserrat/static/Montserrat-Light.ttf
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
 
