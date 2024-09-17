@@ -4,8 +4,6 @@ import 'firebase_options.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:logging/logging.dart';
 import 'package:logging_to_logcat/logging_to_logcat.dart';
-import 'view/auth/views/login_view.dart';
-import 'view/profile_selection/views/profile_picker_view.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'view/auth/bloc/auth_bloc.dart';
 import 'view/common/welcome_page.dart';
@@ -59,4 +57,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-
