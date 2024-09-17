@@ -5,11 +5,11 @@ gradle-wrapper.jar
 /gradlew.bat
 /local.properties
 GeneratedPluginRegistrant.java
+/android/app/google-services.json
 
 # Remember to never publicly share your keystore.
 # See https://flutter.dev/to/reference-keystore
 
-/android/app/google-services.json
 key.properties
 **/*.keystore
 **/*.jks
