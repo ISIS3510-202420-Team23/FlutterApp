@@ -9,13 +9,11 @@ import 'package:andlet/view/profile_selection/views/profile_picker_view.dart';
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
 
-
   @override
-  _LoginViewState createState() => _LoginViewState();
-
+  LoginViewState createState() => LoginViewState();
 }
 
-class _LoginViewState extends State<LoginView> {
+class LoginViewState extends State<LoginView> {
   bool rememberMe = false; // Variable to track checkbox state
   final Logger _logger = Logger('LoginView');
 
@@ -27,18 +25,22 @@ class _LoginViewState extends State<LoginView> {
         listener: (context, state) {
           // Navigate to ProfilePickerView on successful Google sign-in
           if (state is ProfilePickerSuccess) {
-            _logger.info('Navigating to profile picker for user: ${state.userEmail}');
+            _logger.info(
+                'Navigating to profile picker for user: ${state.userEmail}');
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const ProfilePickerView()),
+              MaterialPageRoute(
+                  builder: (context) => const ProfilePickerView()),
             );
           }
           // Handle other states like Authenticated and AuthError
           else if (state is Authenticated) {
-            _logger.info('Authentication successful for user: ${state.userEmail}');
+            _logger
+                .info('Authentication successful for user: ${state.userEmail}');
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const ProfilePickerView()),
+              MaterialPageRoute(
+                  builder: (context) => const ProfilePickerView()),
             );
             // Navigate to main page (explore) after successful login
           } else if (state is AuthError) {
@@ -81,7 +83,9 @@ class _LoginViewState extends State<LoginView> {
                   ],
                 ),
               ),
-              const SizedBox(height: 0), // Positive spacing between top text and the buttons
+              const SizedBox(
+                  height:
+                      0), // Positive spacing between top text and the buttons
 
               // Centered section with buttons and other elements
               Expanded(
@@ -121,7 +125,8 @@ class _LoginViewState extends State<LoginView> {
                     ElevatedButton.icon(
                       onPressed: () {
                         _logger.info('Attempting Google Sign-Up');
-                        BlocProvider.of<AuthBloc>(context).add(const GoogleLoginRequested());
+                        BlocProvider.of<AuthBloc>(context)
+                            .add(const GoogleLoginRequested());
                       },
                       icon: Image.asset('lib/assets/google.png', height: 20),
                       label: const Text(
@@ -134,7 +139,8 @@ class _LoginViewState extends State<LoginView> {
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 40),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 15, horizontal: 40),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(30),
                         ),
@@ -150,7 +156,10 @@ class _LoginViewState extends State<LoginView> {
                           padding: EdgeInsets.symmetric(horizontal: 10),
                           child: Text(
                             'Or log in with Email',
-                            style: TextStyle(fontFamily: 'Montserrat', fontSize: 15, color: Color(0xFF0C356A)),
+                            style: TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontSize: 15,
+                                color: Color(0xFF0C356A)),
                           ),
                         ),
                         Expanded(child: Divider(color: Color(0xFF0C356A))),
@@ -162,7 +171,8 @@ class _LoginViewState extends State<LoginView> {
                       onPressed: () {
                         // Trigger Google Login
                         _logger.info('Attempting Google Login');
-                        BlocProvider.of<AuthBloc>(context).add(const GoogleLoginRequested());
+                        BlocProvider.of<AuthBloc>(context)
+                            .add(const GoogleLoginRequested());
                       },
                       icon: Image.asset('lib/assets/google.png', height: 20),
                       label: const Text(
@@ -175,7 +185,8 @@ class _LoginViewState extends State<LoginView> {
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 40),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 15, horizontal: 40),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(30),
                         ),
@@ -194,7 +205,8 @@ class _LoginViewState extends State<LoginView> {
                               rememberMe = value ?? false;
                             });
                           },
-                          activeColor: const Color(0xFF0C356A), // Set fill color when checked
+                          activeColor: const Color(
+                              0xFF0C356A), // Set fill color when checked
                         ),
                         const Text(
                           'Remember me',
