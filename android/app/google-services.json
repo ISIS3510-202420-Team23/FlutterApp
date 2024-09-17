@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "348185142802",
+    "firebase_url": "https://andlet-c067b-default-rtdb.firebaseio.com",
+    "project_id": "andlet-c067b",
+    "storage_bucket": "andlet-c067b.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:348185142802:android:b25e0761460fbac6a39acb",
+        "android_client_info": {
+          "package_name": "com.andlet.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "348185142802-1vveglg3t8t9f310hr84t898ite9mq6q.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.andlet.app",
+            "certificate_hash": "3c254460c4f0d3b4dbeeb979d4794692597c60d7"
+          }
+        },
+        {
+          "client_id": "348185142802-mnrl6j3s468vpce59p9taipabtighqe3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD_4LpUvkaAOHtErvfydwH1ve29ALSqXYw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "348185142802-mnrl6j3s468vpce59p9taipabtighqe3.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
