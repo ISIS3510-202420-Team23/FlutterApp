@@ -4,6 +4,7 @@ import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
 import 'package:logging/logging.dart';
+import 'package:andlet/view/profile_selection/views/profile_picker_view.dart';
 
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
@@ -22,10 +23,26 @@ class LoginViewState extends State<LoginView> {
       backgroundColor: const Color(0xFFC5DDFF),
       body: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
-          if (state is Authenticated) {
+          // Navigate to ProfilePickerView on successful Google sign-in
+          if (state is ProfilePickerSuccess) {
+            _logger.info(
+                'Navigating to profile picker for user: ${state.userEmail}');
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => const ProfilePickerView()),
+            );
+          }
+          // Handle other states like Authenticated and AuthError
+          else if (state is Authenticated) {
             _logger
                 .info('Authentication successful for user: ${state.userEmail}');
-            //Navigator.pushNamed(context, '/home');
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => const ProfilePickerView()),
+            );
+            // Navigate to main page (explore) after successful login
           } else if (state is AuthError) {
             _logger.severe('Authentication error: ${state.message}');
             ScaffoldMessenger.of(context).showSnackBar(

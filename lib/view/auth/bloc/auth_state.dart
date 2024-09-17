@@ -31,6 +31,15 @@ class GoogleSignupSuccess extends AuthState {
   List<Object> get props => [userEmail];
 }
 
+class ProfilePickerSuccess extends AuthState {
+  final String userEmail;
+
+  const ProfilePickerSuccess({required this.userEmail});
+
+  @override
+  List<Object> get props => [userEmail];
+}
+
 class Unauthenticated extends AuthState {}
 
 class AuthError extends AuthState {

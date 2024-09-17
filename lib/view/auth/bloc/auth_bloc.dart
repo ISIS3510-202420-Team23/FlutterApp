@@ -37,10 +37,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   // Method to handle GoogleLoginRequested event
   Future<void> _onGoogleLoginRequested(GoogleLoginRequested event, Emitter<AuthState> emit) async {
-    _logger.info('GoogleLoginRequested event triggered');
     emit(AuthLoading());
     try {
-      // Perform Google Sign-In
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
       if (googleUser != null) {
         final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
@@ -49,18 +47,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           idToken: googleAuth.idToken,
         );
 
-        // Sign in to Firebase using the Google credentials
         UserCredential userCredential = await _auth.signInWithCredential(credential);
-        _logger.info('Google Sign-In successful: ${userCredential.user?.email}');
-        // Optional: Yield `GoogleSignupSuccess` if you want to differentiate the signup flow
-        emit(Authenticated(userEmail: userCredential.user?.email ?? ''));
+        // Navigate to Profile Picker after successful Google login
+        emit(ProfilePickerSuccess(userEmail: userCredential.user?.email ?? ''));
       } else {
-        // Handle the case where the user cancels the Google Sign-In flow
-        _logger.warning('Google Sign-In aborted by user');
         emit(const AuthError(message: 'Google Sign-In aborted by user.'));
       }
     } catch (e) {
-      _logger.severe('Google Sign-In failed: $e');
       emit(AuthError(message: 'Google Sign-In failed: ${e.toString()}'));
     }
   }
