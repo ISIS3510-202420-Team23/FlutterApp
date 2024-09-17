@@ -71,8 +71,8 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - .env
-    - lib/assets/Andlet.png
-    - lib/assets/Andletlogosf.png
+    - lib/assets/andlet.png
+    - lib/assets/andletlogosf.png
     - lib/assets/1.svg
     - lib/assets/2.svg
     - lib/assets/google.png
