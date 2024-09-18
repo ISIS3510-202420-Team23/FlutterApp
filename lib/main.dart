@@ -6,9 +6,7 @@ import 'package:logging/logging.dart';
 import 'package:logging_to_logcat/logging_to_logcat.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'view/auth/bloc/auth_bloc.dart';
-import 'view/profile_selection/views/profile_picker_view.dart';
 import 'view/common/welcome_page.dart';
-import 'view/explore/views/explore_view.dart';
 
 void main() async {
   await _initializeApp();

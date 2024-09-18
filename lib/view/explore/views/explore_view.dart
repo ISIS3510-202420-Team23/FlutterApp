@@ -48,7 +48,8 @@ class _ExploreViewState extends State<ExploreView> {
                     ],
                   ),
                   CircleAvatar(
-                    backgroundImage: AssetImage('lib/assets/dani.jpg'), // Profile image
+                    backgroundImage:
+                        AssetImage('lib/assets/dani.jpg'), // Profile image
                     radius: 30,
                   ),
                 ],
@@ -82,12 +83,14 @@ class _ExploreViewState extends State<ExploreView> {
               ListView.builder(
                 physics: const NeverScrollableScrollPhysics(),
                 shrinkWrap: true,
-                itemCount: 4, // You can make this dynamic based on property listings
+                itemCount:
+                    4, // You can make this dynamic based on property listings
                 itemBuilder: (context, index) {
                   return const Padding(
                     padding: EdgeInsets.symmetric(vertical: 5),
                     child: PropertyCard(
-                      imageUrl: 'lib/assets/apartment_image.jpg', // Replace with actual image URL
+                      imageUrl:
+                          'lib/assets/apartment_image.jpg', // Replace with actual image URL
                       title: 'Apartment - T2 - 1102',
                       location: 'Ac. 19 #2a - 10, Bogotá',
                       rooms: '4',
@@ -134,6 +137,7 @@ class PropertyCard extends StatelessWidget {
   final String price;
 
   const PropertyCard({
+    super.key,
     required this.imageUrl,
     required this.title,
     required this.location,
@@ -148,14 +152,16 @@ class PropertyCard extends StatelessWidget {
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(25), // Rounded image
-          child: Image.asset(imageUrl, fit: BoxFit.cover, height: 200, width: double.infinity),
+          child: Image.asset(imageUrl,
+              fit: BoxFit.cover, height: 200, width: double.infinity),
         ),
         Card(
           color: Colors.white, // White card background
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(15),
           ),
-          margin: const EdgeInsets.only(top: 0, bottom: 15), // Small space between image and card
+          margin: const EdgeInsets.only(
+              top: 0, bottom: 15), // Small space between image and card
           elevation: 0, // Slight elevation to give the card a background effect
           child: Padding(
             padding: const EdgeInsets.all(15.0),
@@ -173,7 +179,8 @@ class PropertyCard extends StatelessWidget {
                 const SizedBox(height: 0),
                 Row(
                   children: [
-                    const Icon(Icons.location_on, size: 16, color: Colors.black),
+                    const Icon(Icons.location_on,
+                        size: 16, color: Colors.black),
                     const SizedBox(width: 0),
                     Text(
                       location,
@@ -193,14 +200,17 @@ class PropertyCard extends StatelessWidget {
                       children: [
                         const Icon(Icons.bed, size: 16, color: Colors.black),
                         const SizedBox(width: 5),
-                        Text(rooms, style: const TextStyle(color: Colors.black)),
+                        Text(rooms,
+                            style: const TextStyle(color: Colors.black)),
                       ],
                     ),
                     Row(
                       children: [
-                        const Icon(Icons.bathtub, size: 16, color: Colors.black),
+                        const Icon(Icons.bathtub,
+                            size: 16, color: Colors.black),
                         const SizedBox(width: 5),
-                        Text(baths, style: const TextStyle(color: Colors.black)),
+                        Text(baths,
+                            style: const TextStyle(color: Colors.black)),
                       ],
                     ),
                     Text(
