@@ -77,6 +77,7 @@ flutter:
     - lib/assets/2.svg
     - lib/assets/google.png
     - lib/assets/apartment_image.jpg
+    - lib/assets/dani.jpg
   fonts:
     - family: League Spartan
       fonts:
