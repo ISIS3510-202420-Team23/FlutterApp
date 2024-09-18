@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:andlet/view/explore/views/explore_view.dart';
 
 class ProfilePickerView extends StatelessWidget {
   const ProfilePickerView({super.key});
@@ -43,7 +44,10 @@ class ProfilePickerView extends StatelessWidget {
                 children: [
                   ElevatedButton(
                     onPressed: () {
-                      // Navigate to the "Rent a place" flow
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ExploreView()), // Navigate to ExploreView
+                      );
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFFFB900),
