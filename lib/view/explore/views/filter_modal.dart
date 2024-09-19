@@ -5,10 +5,10 @@ class FilterModal extends StatefulWidget {
   const FilterModal({super.key});
 
   @override
-  _FilterModalState createState() => _FilterModalState();
+  FilterModalState createState() => FilterModalState();
 }
 
-class _FilterModalState extends State<FilterModal> {
+class FilterModalState extends State<FilterModal> {
   double selectedPrice = 10000000; // Initial price value
   double selectedMinutes = 30; // Initial minutes value
   DateTimeRange? selectedDateRange; // Variable to store selected date range
@@ -21,7 +21,7 @@ class _FilterModalState extends State<FilterModal> {
     final DateTimeRange? picked = await showDateRangePicker(
       context: context,
       firstDate: DateTime.now(), // From today onwards
-      lastDate: DateTime(2030),  // Set to future limit
+      lastDate: DateTime(2030), // Set to future limit
       initialDateRange: selectedDateRange ??
           DateTimeRange(
             start: DateTime.now(),
@@ -69,8 +69,15 @@ class _FilterModalState extends State<FilterModal> {
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('When?', style: TextStyle(fontSize: 25, fontFamily: 'League Spartan', fontWeight: FontWeight.w600, color: Color(0xFF0C356A))),
-                Text('Add dates', style: TextStyle(color: Color(0xFF0C356A), fontWeight: FontWeight.w500)),
+                Text('When?',
+                    style: TextStyle(
+                        fontSize: 25,
+                        fontFamily: 'League Spartan',
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF0C356A))),
+                Text('Add dates',
+                    style: TextStyle(
+                        color: Color(0xFF0C356A), fontWeight: FontWeight.w500)),
               ],
             ),
           ),
@@ -84,10 +91,15 @@ class _FilterModalState extends State<FilterModal> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('From', style: TextStyle(fontSize: 18, fontFamily: 'Monserrat', fontWeight: FontWeight.w500)),
+                      const Text('From',
+                          style: TextStyle(
+                              fontSize: 18,
+                              fontFamily: 'Monserrat',
+                              fontWeight: FontWeight.w500)),
                       Text(
                         selectedDateRange != null
-                            ? DateFormat('dd/MM/yyyy').format(selectedDateRange!.start)
+                            ? DateFormat('dd/MM/yyyy')
+                                .format(selectedDateRange!.start)
                             : 'Select date',
                       ),
                     ],
@@ -99,10 +111,15 @@ class _FilterModalState extends State<FilterModal> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('To', style: TextStyle(fontSize: 18, fontFamily: 'Monserrat', fontWeight: FontWeight.w500)),
+                      const Text('To',
+                          style: TextStyle(
+                              fontSize: 18,
+                              fontFamily: 'Monserrat',
+                              fontWeight: FontWeight.w500)),
                       Text(
                         selectedDateRange != null
-                            ? DateFormat('dd/MM/yyyy').format(selectedDateRange!.end)
+                            ? DateFormat('dd/MM/yyyy')
+                                .format(selectedDateRange!.end)
                             : 'Select date',
                       ),
                     ],
@@ -122,7 +139,12 @@ class _FilterModalState extends State<FilterModal> {
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Price', style: TextStyle(fontSize: 25, fontFamily: 'League Spartan', fontWeight: FontWeight.w600, color: Color(0xFF0C356A))),
+                Text('Price',
+                    style: TextStyle(
+                        fontSize: 25,
+                        fontFamily: 'League Spartan',
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF0C356A))),
                 Text('Select price'),
               ],
             ),
@@ -157,7 +179,12 @@ class _FilterModalState extends State<FilterModal> {
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Minutes from campus', style: TextStyle(fontSize: 25, fontFamily: 'League Spartan', fontWeight: FontWeight.w600, color: Color(0xFF0C356A))),
+                Text('Minutes from campus',
+                    style: TextStyle(
+                        fontSize: 25,
+                        fontFamily: 'League Spartan',
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF0C356A))),
                 Text('Select minutes'),
               ],
             ),
@@ -187,4 +214,3 @@ class _FilterModalState extends State<FilterModal> {
     );
   }
 }
-

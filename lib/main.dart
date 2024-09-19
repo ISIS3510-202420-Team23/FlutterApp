@@ -1,5 +1,4 @@
 import 'package:andlet/view/common/welcome_page.dart';
-import 'package:andlet/view/explore/views/explore_view.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';

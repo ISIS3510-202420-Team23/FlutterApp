@@ -30,12 +30,11 @@ class PropertyDetailView extends StatefulWidget {
   });
 
   @override
-  _PropertyDetailViewState createState() => _PropertyDetailViewState();
+  PropertyDetailViewState createState() => PropertyDetailViewState();
 }
 
-class _PropertyDetailViewState extends State<PropertyDetailView> {
+class PropertyDetailViewState extends State<PropertyDetailView> {
   int _currentPage = 0; // Track current carousel page
-  final CarouselController _carouselController = CarouselController();
 
   // Track whether to show the contact details
   bool showContactDetails = false;
@@ -92,7 +91,8 @@ class _PropertyDetailViewState extends State<PropertyDetailView> {
                                   child: Container(
                                     width: 10.0,
                                     height: 10.0,
-                                    margin: const EdgeInsets.symmetric(horizontal: 4.0),
+                                    margin: const EdgeInsets.symmetric(
+                                        horizontal: 4.0),
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
                                       color: _currentPage == entry.key
@@ -124,7 +124,8 @@ class _PropertyDetailViewState extends State<PropertyDetailView> {
                             const SizedBox(height: 10),
                             Row(
                               children: [
-                                const Icon(Icons.location_on_outlined, size: 20, color: Colors.black),
+                                const Icon(Icons.location_on_outlined,
+                                    size: 20, color: Colors.black),
                                 const SizedBox(width: 5),
                                 Text(
                                   widget.location,
@@ -151,9 +152,12 @@ class _PropertyDetailViewState extends State<PropertyDetailView> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               children: [
-                                _buildFacilityWidget(Icons.bed, '${widget.rooms} Bedroom'),
-                                _buildFacilityWidget(Icons.bathtub, '${widget.bathrooms} Bathroom'),
-                                _buildFacilityWidget(Icons.group, '${widget.roommates} Roommates'),
+                                _buildFacilityWidget(
+                                    Icons.bed, '${widget.rooms} Bedroom'),
+                                _buildFacilityWidget(Icons.bathtub,
+                                    '${widget.bathrooms} Bathroom'),
+                                _buildFacilityWidget(Icons.group,
+                                    '${widget.roommates} Roommates'),
                               ],
                             ),
                             const SizedBox(height: 20),
@@ -198,9 +202,12 @@ class _PropertyDetailViewState extends State<PropertyDetailView> {
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
                   color: const Color(0xFFF9EFD7), // Light yellow background
-                  width: MediaQuery.of(context).size.width, // Ensures it stretches across the screen width
+                  width: MediaQuery.of(context)
+                      .size
+                      .width, // Ensures it stretches across the screen width
                   padding: const EdgeInsets.all(10.0),
-                  child: const Center( // Centers the text inside the container
+                  child: const Center(
+                    // Centers the text inside the container
                     child: Text(
                       'Email: paula.daza@example.com',
                       textAlign: TextAlign.center, // Centers the text itself

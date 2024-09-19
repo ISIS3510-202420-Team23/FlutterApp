@@ -6,25 +6,26 @@ class CustomBottomNavbar extends StatelessWidget {
   final VoidCallback onContactPressed;
 
   const CustomBottomNavbar({
-    Key? key,
+    super.key,
     required this.agentName,
     required this.price,
     required this.onContactPressed,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       color: const Color(0xFFF9EFD7), // Custom background color
-      padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 15.0), // Adjust padding
+      padding: const EdgeInsets.symmetric(
+          vertical: 20.0, horizontal: 15.0), // Adjust padding
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Row(
             children: [
               const CircleAvatar(
-                backgroundImage:
-                AssetImage('lib/assets/pau.jpg'), // Add the correct asset or color
+                backgroundImage: AssetImage(
+                    'lib/assets/pau.jpg'), // Add the correct asset or color
                 radius: 25,
               ),
               const SizedBox(width: 12),
