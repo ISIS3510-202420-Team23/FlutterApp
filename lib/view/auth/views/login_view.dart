@@ -51,7 +51,7 @@ class LoginViewState extends State<LoginView> {
           }
         },
         child: Padding(
-          padding: const EdgeInsets.all(20.0),
+          padding: const EdgeInsets.all(30.0),
           child: Column(
             children: [
               // Top section with welcome text aligned to the left
@@ -62,7 +62,7 @@ class LoginViewState extends State<LoginView> {
                   children: [
                     SizedBox(height: 40), // Adjust the top space
                     Text(
-                      'Welcome to Andlet!',
+                      'Welcome to \nAndlet!',
                       style: TextStyle(
                         fontFamily: 'League Spartan',
                         fontSize: 42,
@@ -70,9 +70,9 @@ class LoginViewState extends State<LoginView> {
                         color: Color(0xFF0C356A),
                       ),
                     ),
-                    SizedBox(height: 5),
+                    SizedBox(height: 0),
                     Text(
-                      'Sign-in to access your account',
+                      'Sign-in to access \nyour account',
                       style: TextStyle(
                         fontFamily: 'Montserrat',
                         fontSize: 25,
@@ -83,10 +83,6 @@ class LoginViewState extends State<LoginView> {
                   ],
                 ),
               ),
-              const SizedBox(
-                  height:
-                      0), // Positive spacing between top text and the buttons
-
               // Centered section with buttons and other elements
               Expanded(
                 child: Column(
@@ -193,7 +189,7 @@ class LoginViewState extends State<LoginView> {
                         elevation: 5,
                       ),
                     ),
-                    const SizedBox(height: 15),
+                    const SizedBox(height: 5),
                     // Remember me checkbox
                     Row(
                       mainAxisAlignment: MainAxisAlignment.start,
@@ -219,6 +215,43 @@ class LoginViewState extends State<LoginView> {
                       ],
                     ),
                   ],
+                ),
+              ),
+              // Align the dots at the left-bottom side
+              Padding(
+                padding: const EdgeInsets.only(bottom: 40, left: 10),
+                child: Align(
+                  alignment: Alignment.bottomLeft,
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFF9A826),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF0C356A),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFF9A826),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],

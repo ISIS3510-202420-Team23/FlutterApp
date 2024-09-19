@@ -37,6 +37,8 @@ dependencies:
   firebase_database: ^11.1.2
   google_sign_in: ^5.0.7
   flutter_signin_button: ^2.0.0
+  carousel_slider: ^5.0.0
+  intl: ^0.17.0
 
 
   # The following adds the Cupertino Icons font to your application.
@@ -78,12 +80,17 @@ flutter:
     - lib/assets/google.png
     - lib/assets/apartment_image.jpg
     - lib/assets/dani.jpg
+    - lib/assets/pau.jpg
   fonts:
     - family: League Spartan
       fonts:
         - asset: lib/assets/fonts/League_Spartan/static/LeagueSpartan-Bold.ttf
         - asset: lib/assets/fonts/League_Spartan/static/LeagueSpartan-Regular.ttf
         - asset: lib/assets/fonts/League_Spartan/static/LeagueSpartan-Light.ttf
+        - asset: lib/assets/fonts/League_Spartan/static/LeagueSpartan-Medium.ttf
+          weight: 700
+        - asset: lib/assets/fonts/League_Spartan/static/LeagueSpartan-SemiBold.ttf
+          weight: 600
         - asset: lib/assets/fonts/League_Spartan/static/LeagueSpartan-ExtraBold.ttf
     - family: Montserrat
       fonts:

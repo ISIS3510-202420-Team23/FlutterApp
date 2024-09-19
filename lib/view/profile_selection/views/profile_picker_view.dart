@@ -9,11 +9,11 @@ class ProfilePickerView extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFB5D5FF), // Light blue background
       body: Padding(
-        padding: const EdgeInsets.all(20.0), // Add padding around the content
+        padding: const EdgeInsets.all(30.0), // Add padding around the content
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center, // Align text to the center
           children: [
-            const SizedBox(height: 60), // Add some space from the top
+            const SizedBox(height: 40), // Add some space from the top
             const Align(
               alignment: Alignment.centerLeft, // Keep "Let's start" aligned left
               child: Text(
@@ -91,18 +91,19 @@ class ProfilePickerView extends StatelessWidget {
                 ],
               ),
             ),
-            const Spacer(), // Push everything to the top
+            const Spacer(),
+            // Align the dots at the left-bottom side
             Padding(
-              padding: const EdgeInsets.only(bottom: 30.0),
-              child: Center(
+              padding: const EdgeInsets.only(bottom: 40, left: 10),
+              child: Align(
+                alignment: Alignment.bottomLeft,
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Container(
                       width: 10,
                       height: 10,
                       decoration: const BoxDecoration(
-                        color: Colors.black26,
+                        color: Color(0xFFF9A826),
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -111,7 +112,7 @@ class ProfilePickerView extends StatelessWidget {
                       width: 10,
                       height: 10,
                       decoration: const BoxDecoration(
-                        color: Colors.black26,
+                        color: Color(0xFFF9A826),
                         shape: BoxShape.circle,
                       ),
                     ),
