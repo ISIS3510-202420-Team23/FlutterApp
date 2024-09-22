@@ -3,14 +3,14 @@ plugins {
     // START: FlutterFire Configuration
     id 'com.google.gms.google-services'
     // END: FlutterFire Configuration
-    id "kotlin-android"
+    id 'kotlin-android'
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id "dev.flutter.flutter-gradle-plugin"
 }
 
 android {
-    namespace = "com.example.andlet"
-    compileSdk = flutter.compileSdkVersion
+    namespace = "com.andlet.app"
+    compileSdkVersion 34  // Updated compile SDK version to 35
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -19,16 +19,14 @@ android {
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_1_8
+        jvmTarget = '1.8'
     }
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.andlet"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        applicationId = "com.andlet.app"
+        minSdkVersion 23 // This is the minimum version required by Firebase Auth
+        targetSdkVersion 34  // Updated target SDK version to 35
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
@@ -44,4 +42,9 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    implementation 'com.google.firebase:firebase-auth'
+    implementation 'com.google.android.gms:play-services-auth:21.2.0' // Latest version
 }
