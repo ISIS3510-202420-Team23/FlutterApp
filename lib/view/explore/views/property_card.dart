@@ -1,9 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 class PropertyCard extends StatelessWidget {
   final String imageUrl;
   final String title;
-  final String location;
+  final GeoPoint location;
   final String rooms;
   final String baths;
   final String price;
@@ -52,7 +53,7 @@ class PropertyCard extends StatelessWidget {
                     const Icon(Icons.location_on, size: 16, color: Colors.black),
                     const SizedBox(width: 0),
                     Text(
-                      location,
+                      '[${location.latitude}, ${location.longitude}]',
                       style: const TextStyle(
                         fontFamily: 'League Spartan',
                         fontSize: 14,
