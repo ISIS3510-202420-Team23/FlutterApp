@@ -44,8 +44,8 @@ class PropertyViewModel extends ChangeNotifier {
 
         notifyListeners();
       }
-    } catch (e) {
-      log.shout('Error fetching properties: $e');
+    } catch (e, stacktrace) {
+      log.shout('Error fetching properties: $e\nStacktrace: $stacktrace');
     } finally {
       _setLoading(false);
     }

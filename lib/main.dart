@@ -6,7 +6,9 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:logging/logging.dart';
 import 'package:logging_to_logcat/logging_to_logcat.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart'; // Import Provider package
 import 'view/auth/bloc/auth_bloc.dart';
+import 'view_models/property_view_model.dart'; // Import PropertyViewModel
 
 void main() async {
   await _initializeApp();
@@ -43,16 +45,23 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
+    return MultiProvider(
       providers: [
-        BlocProvider<AuthBloc>(create: (context) => AuthBloc()),
+        // Include PropertyViewModel as a ChangeNotifierProvider
+        ChangeNotifierProvider(create: (_) => PropertyViewModel()),
       ],
-      child: MaterialApp(
-        title: 'Andlet App',
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
+      child: MultiBlocProvider(
+        providers: [
+          // Existing AuthBloc
+          BlocProvider<AuthBloc>(create: (context) => AuthBloc()),
+        ],
+        child: MaterialApp(
+          title: 'Andlet App',
+          theme: ThemeData(
+            primarySwatch: Colors.blue,
+          ),
+          home: const WelcomePage(),
         ),
-        home: const WelcomePage(),
       ),
     );
   }

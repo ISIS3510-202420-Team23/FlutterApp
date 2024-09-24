@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart'; // Import provider package
+import '../../../view_models/property_view_model.dart';
 import 'filter_modal.dart';
 import 'property_card.dart';
 import 'package:andlet/view/property_details/views/property_detail_view.dart';
@@ -14,7 +16,20 @@ class _ExploreViewState extends State<ExploreView> {
   int currentPageIndex = 0;
 
   @override
+  void initState() {
+    super.initState();
+    // Fetch properties once the widget is mounted
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<PropertyViewModel>(context, listen: false).fetchProperties();
+    });
+  }
+
+
+  @override
   Widget build(BuildContext context) {
+    final propertyViewModel =
+        Provider.of<PropertyViewModel>(context); // Access the PropertyViewModel
+
     return Scaffold(
       backgroundColor: Colors.white, // White background
       body: Padding(
@@ -51,7 +66,8 @@ class _ExploreViewState extends State<ExploreView> {
                     ],
                   ),
                   CircleAvatar(
-                    backgroundImage: AssetImage('lib/assets/dani.jpg'), // Profile image
+                    backgroundImage:
+                        AssetImage('lib/assets/dani.jpg'), // Profile image
                     radius: 30,
                   ),
                 ],
@@ -64,7 +80,8 @@ class _ExploreViewState extends State<ExploreView> {
                     context: context,
                     isScrollControlled: true, // Ensure full screen
                     shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                      borderRadius:
+                          BorderRadius.vertical(top: Radius.circular(20)),
                     ),
                     builder: (context) => SizedBox(
                       height: MediaQuery.of(context).size.height * 0.9,
@@ -76,7 +93,8 @@ class _ExploreViewState extends State<ExploreView> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 IconButton(
-                                  icon: const Icon(Icons.close, color: Color(0xFF0C356A)), // X button
+                                  icon: const Icon(Icons.close,
+                                      color: Color(0xFF0C356A)), // X button
                                   onPressed: () {
                                     Navigator.of(context).pop(); // Close modal
                                   },
@@ -92,7 +110,8 @@ class _ExploreViewState extends State<ExploreView> {
                   );
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10), // Increased padding
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 15, vertical: 10), // Increased padding
                   decoration: BoxDecoration(
                     color: const Color(0xFFB5D5FF),
                     borderRadius: BorderRadius.circular(10),
@@ -116,46 +135,54 @@ class _ExploreViewState extends State<ExploreView> {
                   ),
                 ),
               ),
-              // Explore List (Example of Properties)
-              ListView.builder(
-                physics: const NeverScrollableScrollPhysics(),
-                shrinkWrap: true,
-                itemCount: 4, // You can make this dynamic based on property listings
-                itemBuilder: (context, index) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 5),
-                    child: GestureDetector(
-                      onTap: () {
-                        // Navigate to PropertyDetailView on tap
-                        Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                        builder: (context) => const PropertyDetailView(
-                          title: 'Apartment - T2 - 1102',
-                          location: 'Ac. 19 #2a - 10, Bogotá',
-                          rooms: '4',
-                          bathrooms: '1',
-                          roommates: '3',
-                          description:
-                          'This spacious apartment in City U is shared with three other tenants and offers access to top-tier amenities, including a gym and study rooms. Enjoy modern living in a vibrant community with everything you need just steps away.',
-                          agentName: 'Paula Daza',
-                          price: '1.500.000,00',
-                          ),
-                          ),
-                          );
-                      },
-                      child: const PropertyCard(
-                        imageUrl: 'lib/assets/apartment_image.jpg',
-                        title: 'Apartment - T2 - 1102',
-                        location: 'Ac. 19 #2a - 10, Bogotá',
-                        rooms: '4',
-                        baths: '1',
-                        price: '1.500.000,00',
-                      ),
-                    ),
-                  );
-                },
-              ),
+              // Check if data is still loading
+              propertyViewModel.isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator()) // Show loader
+                  : propertyViewModel.properties.isEmpty
+                      ? const Center(child: Text('No properties available'))
+                      : ListView.builder(
+                          physics: const NeverScrollableScrollPhysics(),
+                          shrinkWrap: true,
+                          itemCount: propertyViewModel.properties.length,
+                          itemBuilder: (context, index) {
+                            final property =
+                                propertyViewModel.properties[index];
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 5),
+                              child: GestureDetector(
+                                onTap: () {
+                                  // Navigate to PropertyDetailView on tap
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => PropertyDetailView(
+                                        title: property.title,
+                                        location: property.location,
+                                        rooms: '4', // Set dynamically
+                                        bathrooms: '1', // Set dynamically
+                                        roommates: '3', // Set dynamically
+                                        description: property.description,
+                                        agentName: 'Paula Daza',
+                                        price:
+                                            '1.500.000,00', // Set dynamically
+                                      ),
+                                    ),
+                                  );
+                                },
+                                child: PropertyCard(
+                                  imageUrl:
+                                      'lib/assets/apartment_image.jpg', // Placeholder image
+                                  title: property.title,
+                                  location: property.location,
+                                  rooms: '4', // Placeholder value
+                                  baths: '1', // Placeholder value
+                                  price: '1.500.000,00', // Placeholder value
+                                ),
+                              ),
+                            );
+                          },
+                        ),
             ],
           ),
         ),
