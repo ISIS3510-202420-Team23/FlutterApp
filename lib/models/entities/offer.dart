@@ -1,8 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class Offer {
-  final String final_date;
+  final Timestamp final_date;
   final String user_id;
   final int property_id;
-  final String initial_date;
+  final Timestamp initial_date;
   final bool is_active;
   final int num_baths;
   final int num_beds;
@@ -65,10 +67,10 @@ class Offer {
 
   // Method to update an Offer object
   Offer copyWith({
-    String? finalDate,
+    Timestamp? finalDate,
     String? userId,
     int? propertyId,
-    String? initialDate,
+    Timestamp? initialDate,
     bool? isActive,
     int? numBaths,
     int? numBeds,
