@@ -55,6 +55,37 @@ class PropertyViewModel extends ChangeNotifier {
     }
   }
 
+  /// Method to get a property by its ID
+  Future<Property?> getPropertyById(String id) async {
+    try {
+      // Fetch the document corresponding to the given ID
+      DocumentSnapshot document = await _propertiesRef.doc(id).get();
+
+      if (document.exists) {
+        final data = document.data() as Map<String, dynamic>?;
+
+        if (data != null) {
+          // Return the property mapped from the data
+          return Property(
+            id: int.tryParse(id) ?? -1,
+            address: data['address'] ?? '',
+            complex_name: data['complex_name'] ?? '',
+            description: data['description'] ?? '',
+            location: data['location'] ?? const GeoPoint(0, 0),
+            photos: List<String>.from(data['photos'] ?? []),
+            title: data['title'] ?? '',
+          );
+        }
+      } else {
+        log.info('Property with ID $id not found');
+      }
+    } catch (e, stacktrace) {
+      log.shout(
+          'Error fetching property by ID $id: $e\nStacktrace: $stacktrace');
+    }
+    return null; // Return null if the property is not found or if an error occurs
+  }
+
   /// Method to add a new property to Firestore
   Future<void> addProperty(Property property) async {
     try {
