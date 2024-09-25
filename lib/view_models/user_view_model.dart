@@ -1,4 +1,4 @@
-import 'package:firebase_database/firebase_database.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import '../models/entities/user.dart';
@@ -9,8 +9,10 @@ class UserViewModel extends ChangeNotifier {
   bool _isLoading = false;
 
   static final log = Logger('UserViewModel');
-  final DatabaseReference _usersRef =
-      FirebaseDatabase.instance.ref().child('users');
+
+  // Reference to Firestore 'users' collection
+  final CollectionReference _usersRef =
+      FirebaseFirestore.instance.collection('users');
 
   /// Getter for users
   List<User> get users => _users;
@@ -18,31 +20,31 @@ class UserViewModel extends ChangeNotifier {
   /// Getter for loading state
   bool get isLoading => _isLoading;
 
-  /// Method to fetch users from Firebase Realtime Database
+  /// Method to fetch users from Firestore
   Future<void> fetchUsers() async {
     _setLoading(true);
 
     try {
-      final DataSnapshot snapshot = await _usersRef.get();
+      QuerySnapshot snapshot = await _usersRef.get();
+      _users = snapshot.docs.expand((doc) {
+        final userData = doc.data() as Map<String, dynamic>;
 
-      if (snapshot.exists) {
-        final data = snapshot.value as Map<dynamic, dynamic>;
-
-        _users = data.entries.map((entry) {
-          final userData = entry.value as Map<dynamic, dynamic>;
+        return userData.entries.map((entry) {
+          final email = entry.key;
+          final details = entry.value as Map<String, dynamic>;
 
           return User(
-            name: userData['name'] ?? '',
-            email: userData['email'] ?? '',
-            phone: userData['phone'] ?? 0,
-            is_andes: userData['is_andes'] ?? false,
-            type_user: userData['type_user'] ?? '',
-            favorite_offers: List<int>.from(userData['favorite_offers'] ?? []),
+            email: email,
+            name: details['name'] ?? '',
+            phone: details['phone'] ?? 0,
+            is_andes: details['is_andes'] ?? false,
+            type_user: details['type_user'] ?? '',
+            favorite_offers: List<int>.from(details['favorite_offers'] ?? []),
           );
-        }).toList();
+        });
+      }).toList();
 
-        notifyListeners();
-      }
+      notifyListeners();
     } catch (e) {
       log.shout('Error fetching users: $e');
     } finally {
@@ -50,13 +52,11 @@ class UserViewModel extends ChangeNotifier {
     }
   }
 
-  /// Method to add a new user to Firebase
+  /// Method to add a new user to Firestore
   Future<void> addUser(User user) async {
     try {
-      final newUserRef = _usersRef.push();
-      await newUserRef.set({
+      await _usersRef.doc(user.email).set({
         'name': user.name,
-        'email': user.email,
         'phone': user.phone,
         'is_andes': user.is_andes,
         'type_user': user.type_user,
@@ -70,10 +70,10 @@ class UserViewModel extends ChangeNotifier {
     }
   }
 
-  /// Method to remove a user from Firebase by key
-  Future<void> removeUser(String userKey) async {
+  /// Method to remove a user from Firestore by email (document ID)
+  Future<void> removeUser(String email) async {
     try {
-      await _usersRef.child(userKey).remove();
+      await _usersRef.doc(email).delete();
 
       // Fetch the updated users list
       await fetchUsers();

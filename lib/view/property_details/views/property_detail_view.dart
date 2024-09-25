@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:andlet/view/property_details/views/custom_bottom_nav_bar.dart';
@@ -9,7 +10,7 @@ final List<String> imageUrls = [
 
 class PropertyDetailView extends StatefulWidget {
   final String title;
-  final String location;
+  final GeoPoint location;
   final String rooms;
   final String bathrooms;
   final String roommates;
@@ -128,7 +129,7 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                                     size: 20, color: Colors.black),
                                 const SizedBox(width: 5),
                                 Text(
-                                  widget.location,
+                                  '[${widget.location.latitude}, ${widget.location.longitude}]',
                                   style: const TextStyle(
                                     fontFamily: 'League Spartan',
                                     fontWeight: FontWeight.w300,

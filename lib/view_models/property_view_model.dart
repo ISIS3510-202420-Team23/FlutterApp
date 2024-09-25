@@ -1,4 +1,4 @@
-import 'package:firebase_database/firebase_database.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import '../models/entities/property.dart';
@@ -9,8 +9,9 @@ class PropertyViewModel extends ChangeNotifier {
   bool _isLoading = false;
 
   static final log = Logger('PropertyViewModel');
-  final DatabaseReference _propertiesRef =
-      FirebaseDatabase.instance.ref().child('properties');
+
+  final CollectionReference _propertiesRef =
+      FirebaseFirestore.instance.collection('properties');
 
   /// Getter for properties
   List<Property> get properties => _properties;
@@ -18,44 +19,82 @@ class PropertyViewModel extends ChangeNotifier {
   /// Getter for loading state
   bool get isLoading => _isLoading;
 
-  /// Method to fetch properties from Firebase Realtime Database
+  /// Method to fetch properties from Firestore
   Future<void> fetchProperties() async {
     _setLoading(true);
 
     try {
-      final DataSnapshot snapshot = await _propertiesRef.get();
+      QuerySnapshot snapshot = await _propertiesRef.get();
 
-      if (snapshot.exists) {
-        final data = snapshot.value as Map<dynamic, dynamic>;
+      _properties = snapshot.docs.expand((doc) {
+        final propertyData = doc.data() as Map<String, dynamic>;
 
-        _properties = data.entries.map((entry) {
-          final propertyData = entry.value as Map<dynamic, dynamic>;
+        // Iterate over each entry in the map where the key is the ID and the value is the property details
+        return propertyData.entries.map((entry) {
+          final id = entry.key;
+          final details = entry.value as Map<String, dynamic>;
 
+          // Create a Property object using the details map
           return Property(
-            id: propertyData['id'] ?? 0,
-            address: propertyData['address'] ?? '',
-            complex_name: propertyData['complex_name'] ?? '',
-            description: propertyData['description'] ?? '',
-            location: propertyData['location'] ?? '',
-            photos: List<String>.from(propertyData['photos'] ?? []),
-            title: propertyData['title'] ?? '',
+            id: int.tryParse(id) ?? -1, // Convert the key (ID) to an int
+            address: details['address'] ?? '',
+            complex_name: details['complex_name'] ?? '',
+            description: details['description'] ?? '',
+            location: details['location'] ?? const GeoPoint(0, 0),
+            photos: List<String>.from(details['photos'] ?? []),
+            title: details['title'] ?? '',
           );
-        }).toList();
+        });
+      }).toList();
 
-        notifyListeners();
-      }
-    } catch (e) {
-      log.shout('Error fetching properties: $e');
+      notifyListeners();
+    } catch (e, stacktrace) {
+      log.shout('Error fetching properties: $e\nStacktrace: $stacktrace');
     } finally {
       _setLoading(false);
     }
   }
 
-  /// Method to add a new property to Firebase
+  /// Method to get a property by its ID (int)
+  Future<Property?> getPropertyById(int id) async {
+    try {
+      // Fetch all documents in the collection
+      QuerySnapshot snapshot = await _propertiesRef.get();
+      // Iterate through each document to find the property with the matching ID
+      for (var doc in snapshot.docs) {
+        final propertyData = doc.data() as Map<String, dynamic>;
+
+        // Check if the document contains the property with the given ID
+        if (propertyData.containsKey(id.toString())) {
+          final details = propertyData[id.toString()] as Map<String, dynamic>;
+
+          // Return the property mapped from the details
+          return Property(
+            id: id, // Use the int ID here
+            address: details['address'] ?? '',
+            complex_name: details['complex_name'] ?? '',
+            description: details['description'] ?? '',
+            location: details['location'] ?? const GeoPoint(0, 0),
+            photos: List<String>.from(details['photos'] ?? []),
+            title: details['title'] ?? '',
+          );
+        }
+      }
+
+      // If we reach this point, no property with the given ID was found
+      log.info('Property with ID $id not found');
+    } catch (e, stacktrace) {
+      log.shout(
+          'Error fetching property by ID $id: $e\nStacktrace: $stacktrace');
+    }
+
+    return null; // Return null if the property is not found or if an error occurs
+  }
+
+  /// Method to add a new property to Firestore
   Future<void> addProperty(Property property) async {
     try {
-      final newPropertyRef = _propertiesRef.push();
-      await newPropertyRef.set({
+      await _propertiesRef.add({
         'id': property.id,
         'address': property.address,
         'complex_name': property.complex_name,
@@ -72,10 +111,10 @@ class PropertyViewModel extends ChangeNotifier {
     }
   }
 
-  /// Method to remove a property from Firebase by key
-  Future<void> removeProperty(String propertyKey) async {
+  /// Method to remove a property from Firestore by document ID
+  Future<void> removeProperty(String documentId) async {
     try {
-      await _propertiesRef.child(propertyKey).remove();
+      await _propertiesRef.doc(documentId).delete();
 
       // Fetch the updated properties list
       await fetchProperties();

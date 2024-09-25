@@ -1,9 +1,11 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class Property {
-  String id;
+  int id;
   String address;
   String complex_name;
   String description;
-  String location;
+  GeoPoint location;
   List<String> photos;
   String title;
 
@@ -21,11 +23,11 @@ class Property {
   // Factory method to create a Property object from Firebase data (JSON)
   factory Property.fromJson(Map<String, dynamic> json) {
     return Property(
-      id: json['id'] as String,
+      id: json['id'] as int,
       address: json['address'] as String,
       description: json['description'] as String,
       complex_name: json['complex_name'] as String,
-      location: json['location'] as String,
+      location: json['location'] as GeoPoint,
       photos: List<String>.from(json['photos'] as List<dynamic>),
       title: json['title'] as String,
     );

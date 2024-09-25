@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../models/entities/property.dart';
+import '../../../view_models/offer_view_model.dart'; // Offers ViewModel
+import '../../../view_models/property_view_model.dart'; // Property ViewModel
 import 'filter_modal.dart';
 import 'property_card.dart';
 import 'package:andlet/view/property_details/views/property_detail_view.dart';
@@ -14,7 +18,20 @@ class _ExploreViewState extends State<ExploreView> {
   int currentPageIndex = 0;
 
   @override
+  void initState() {
+    super.initState();
+    // Fetch offers once the widget is mounted
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<OfferViewModel>(context, listen: false).fetchOffers();
+      Provider.of<PropertyViewModel>(context, listen: false).fetchProperties(); // Fetch properties as well
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final offerViewModel = Provider.of<OfferViewModel>(context);
+    final propertyViewModel = Provider.of<PropertyViewModel>(context); // Access PropertyViewModel
+
     return Scaffold(
       backgroundColor: Colors.white, // White background
       body: Padding(
@@ -51,7 +68,8 @@ class _ExploreViewState extends State<ExploreView> {
                     ],
                   ),
                   CircleAvatar(
-                    backgroundImage: AssetImage('lib/assets/dani.jpg'), // Profile image
+                    backgroundImage:
+                    AssetImage('lib/assets/dani.jpg'), // Profile image
                     radius: 30,
                   ),
                 ],
@@ -64,7 +82,8 @@ class _ExploreViewState extends State<ExploreView> {
                     context: context,
                     isScrollControlled: true, // Ensure full screen
                     shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                      borderRadius:
+                      BorderRadius.vertical(top: Radius.circular(20)),
                     ),
                     builder: (context) => SizedBox(
                       height: MediaQuery.of(context).size.height * 0.9,
@@ -76,7 +95,8 @@ class _ExploreViewState extends State<ExploreView> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 IconButton(
-                                  icon: const Icon(Icons.close, color: Color(0xFF0C356A)), // X button
+                                  icon: const Icon(Icons.close,
+                                      color: Color(0xFF0C356A)), // X button
                                   onPressed: () {
                                     Navigator.of(context).pop(); // Close modal
                                   },
@@ -92,7 +112,8 @@ class _ExploreViewState extends State<ExploreView> {
                   );
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10), // Increased padding
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 15, vertical: 10), // Increased padding
                   decoration: BoxDecoration(
                     color: const Color(0xFFB5D5FF),
                     borderRadius: BorderRadius.circular(10),
@@ -116,43 +137,66 @@ class _ExploreViewState extends State<ExploreView> {
                   ),
                 ),
               ),
-              // Explore List (Example of Properties)
-              ListView.builder(
+              // Check if data is still loading
+              offerViewModel.isLoading || propertyViewModel.isLoading
+                  ? const Center(
+                  child: CircularProgressIndicator()) // Show loader
+                  : offerViewModel.offers.isEmpty
+                  ? const Center(child: Text('No offers available'))
+                  : ListView.builder(
                 physics: const NeverScrollableScrollPhysics(),
                 shrinkWrap: true,
-                itemCount: 4, // You can make this dynamic based on property listings
+                itemCount: offerViewModel.offers.length,
                 itemBuilder: (context, index) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 5),
-                    child: GestureDetector(
-                      onTap: () {
-                        // Navigate to PropertyDetailView on tap
-                        Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                        builder: (context) => const PropertyDetailView(
-                          title: 'Apartment - T2 - 1102',
-                          location: 'Ac. 19 #2a - 10, Bogotá',
-                          rooms: '4',
-                          bathrooms: '1',
-                          roommates: '3',
-                          description:
-                          'This spacious apartment in City U is shared with three other tenants and offers access to top-tier amenities, including a gym and study rooms. Enjoy modern living in a vibrant community with everything you need just steps away.',
-                          agentName: 'Paula Daza',
-                          price: '1.500.000,00',
+                  final offer = offerViewModel.offers[index];
+
+                  return FutureBuilder<Property?>(
+                    future: propertyViewModel.getPropertyById(offer.property_id),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      } else if (snapshot.hasError) {
+                        return const Center(child: Text('Error loading property'));
+                      } else if (!snapshot.hasData || snapshot.data == null) {
+                        return const Center(child: Text('Property not found for this offer'));
+                      }
+
+                      final property = snapshot.data!;
+
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 5),
+                        child: GestureDetector(
+                          onTap: () {
+                            // Navigate to PropertyDetailView on tap
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => PropertyDetailView(
+                                  title: property.title,
+                                  location: property.location,
+                                  rooms: offer.num_rooms.toString(),
+                                  bathrooms: offer.num_baths.toString(),
+                                  roommates: offer.roommates.toString(),
+                                  description: property.description,
+                                  agentName: 'Paula Daza',
+                                  price: offer.price_per_month
+                                      .toString(), // Price from offer
+                                ),
+                              ),
+                            );
+                          },
+                          child: PropertyCard(
+                            imageUrl:
+                            'lib/assets/apartment_image.jpg', // Placeholder image
+                            title: property.title,
+                            location: property.location,
+                            rooms: offer.num_rooms.toString(),
+                            baths: offer.num_baths.toString(),
+                            price: offer.price_per_month.toString(),
                           ),
-                          ),
-                          );
-                      },
-                      child: const PropertyCard(
-                        imageUrl: 'lib/assets/apartment_image.jpg',
-                        title: 'Apartment - T2 - 1102',
-                        location: 'Ac. 19 #2a - 10, Bogotá',
-                        rooms: '4',
-                        baths: '1',
-                        price: '1.500.000,00',
-                      ),
-                    ),
+                        ),
+                      );
+                    },
                   );
                 },
               ),
