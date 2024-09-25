@@ -27,15 +27,20 @@ class StudentComplexViewModel extends ChangeNotifier {
     try {
       QuerySnapshot snapshot = await _studentComplexesRef.get();
 
-      _studentComplexes = snapshot.docs.map((doc) {
-        final complexData = doc.data() as Map<String, dynamic>;
+      _studentComplexes = snapshot.docs.expand((doc) {
+        final studentComplexData = doc.data() as Map<String, dynamic>;
 
-        return StudentComplex(
-          id: doc.id, // Document ID will be used as the unique ID
-          name: complexData['name'] ?? '',
-          rating: complexData['rating']?.toDouble() ?? 0.0,
-          address: complexData['address'] ?? '',
-        );
+        return studentComplexData.entries.map((entry) {
+          final id = entry.key;
+          final details = entry.value as Map<String, dynamic>;
+
+          return StudentComplex(
+            id: id,
+            name: details['name'] ?? '',
+            rating: details['rating'] ?? 0.0,
+            address: details['address'] ?? '',
+          );
+        });
       }).toList();
 
       notifyListeners();
