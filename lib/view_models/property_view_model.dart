@@ -55,11 +55,14 @@ class PropertyViewModel extends ChangeNotifier {
     }
   }
 
-  /// Method to get a property by its ID
-  Future<Property?> getPropertyById(String id) async {
+  /// Method to get a property by its ID (int)
+  Future<Property?> getPropertyById(int id) async {
     try {
-      // Fetch the document corresponding to the given ID
-      DocumentSnapshot document = await _propertiesRef.doc(id).get();
+      // Since Firestore document IDs are strings, we convert the int ID to a string
+      String idAsString = id.toString();
+
+      // Fetch the document corresponding to the given ID (as string)
+      DocumentSnapshot document = await _propertiesRef.doc(idAsString).get();
 
       if (document.exists) {
         final data = document.data() as Map<String, dynamic>?;
@@ -67,7 +70,7 @@ class PropertyViewModel extends ChangeNotifier {
         if (data != null) {
           // Return the property mapped from the data
           return Property(
-            id: int.tryParse(id) ?? -1,
+            id: id, // Use the int ID here
             address: data['address'] ?? '',
             complex_name: data['complex_name'] ?? '',
             description: data['description'] ?? '',
