@@ -1,4 +1,4 @@
-import 'package:firebase_database/firebase_database.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import '../models/entities/student_complex.dart';
@@ -9,8 +9,10 @@ class StudentComplexViewModel extends ChangeNotifier {
   bool _isLoading = false;
 
   static final log = Logger('StudentComplexViewModel');
-  final DatabaseReference _studentComplexesRef =
-      FirebaseDatabase.instance.ref().child('student_complexes');
+
+  // Reference to Firestore 'student_complexes' collection
+  final CollectionReference _studentComplexesRef =
+      FirebaseFirestore.instance.collection('student_complexes');
 
   /// Getter for student complexes
   List<StudentComplex> get studentComplexes => _studentComplexes;
@@ -18,29 +20,25 @@ class StudentComplexViewModel extends ChangeNotifier {
   /// Getter for loading state
   bool get isLoading => _isLoading;
 
-  /// Method to fetch student complexes from Firebase Realtime Database
+  /// Method to fetch student complexes from Firestore
   Future<void> fetchStudentComplexes() async {
     _setLoading(true);
 
     try {
-      final DataSnapshot snapshot = await _studentComplexesRef.get();
+      QuerySnapshot snapshot = await _studentComplexesRef.get();
 
-      if (snapshot.exists) {
-        final data = snapshot.value as Map<dynamic, dynamic>;
+      _studentComplexes = snapshot.docs.map((doc) {
+        final complexData = doc.data() as Map<String, dynamic>;
 
-        _studentComplexes = data.entries.map((entry) {
-          final complexData = entry.value as Map<dynamic, dynamic>;
+        return StudentComplex(
+          id: doc.id, // Document ID will be used as the unique ID
+          name: complexData['name'] ?? '',
+          rating: complexData['rating']?.toDouble() ?? 0.0,
+          address: complexData['address'] ?? '',
+        );
+      }).toList();
 
-          return StudentComplex(
-            id: entry.key,
-            name: complexData['name'] ?? '',
-            rating: complexData['rating']?.toDouble() ?? 0.0,
-            address: complexData['address'] ?? '',
-          );
-        }).toList();
-
-        notifyListeners();
-      }
+      notifyListeners();
     } catch (e) {
       log.shout('Error fetching student complexes: $e');
     } finally {
@@ -48,11 +46,10 @@ class StudentComplexViewModel extends ChangeNotifier {
     }
   }
 
-  /// Method to add a new student complex to Firebase
+  /// Method to add a new student complex to Firestore
   Future<void> addStudentComplex(StudentComplex studentComplex) async {
     try {
-      final newComplexRef = _studentComplexesRef.push();
-      await newComplexRef.set({
+      await _studentComplexesRef.add({
         'name': studentComplex.name,
         'rating': studentComplex.rating,
         'address': studentComplex.address,
@@ -65,10 +62,10 @@ class StudentComplexViewModel extends ChangeNotifier {
     }
   }
 
-  /// Method to remove a student complex from Firebase by key
-  Future<void> removeStudentComplex(String complexKey) async {
+  /// Method to remove a student complex from Firestore by document ID
+  Future<void> removeStudentComplex(String documentId) async {
     try {
-      await _studentComplexesRef.child(complexKey).remove();
+      await _studentComplexesRef.doc(documentId).delete();
 
       // Fetch the updated student complexes list
       await fetchStudentComplexes();

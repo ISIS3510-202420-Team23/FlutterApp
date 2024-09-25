@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // Import provider package
-import '../../../view_models/property_view_model.dart';
+import 'package:provider/provider.dart';
+import '../../../models/entities/property.dart';
+import '../../../view_models/offer_view_model.dart'; // Offers ViewModel
+import '../../../view_models/property_view_model.dart'; // Property ViewModel
 import 'filter_modal.dart';
 import 'property_card.dart';
 import 'package:andlet/view/property_details/views/property_detail_view.dart';
@@ -18,17 +20,17 @@ class _ExploreViewState extends State<ExploreView> {
   @override
   void initState() {
     super.initState();
-    // Fetch properties once the widget is mounted
+    // Fetch offers once the widget is mounted
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<PropertyViewModel>(context, listen: false).fetchProperties();
+      Provider.of<OfferViewModel>(context, listen: false).fetchOffers();
+      Provider.of<PropertyViewModel>(context, listen: false).fetchProperties(); // Fetch properties as well
     });
   }
 
-
   @override
   Widget build(BuildContext context) {
-    final propertyViewModel =
-        Provider.of<PropertyViewModel>(context); // Access the PropertyViewModel
+    final offerViewModel = Provider.of<OfferViewModel>(context);
+    final propertyViewModel = Provider.of<PropertyViewModel>(context); // Access PropertyViewModel
 
     return Scaffold(
       backgroundColor: Colors.white, // White background
@@ -67,7 +69,7 @@ class _ExploreViewState extends State<ExploreView> {
                   ),
                   CircleAvatar(
                     backgroundImage:
-                        AssetImage('lib/assets/dani.jpg'), // Profile image
+                    AssetImage('lib/assets/dani.jpg'), // Profile image
                     radius: 30,
                   ),
                 ],
@@ -81,7 +83,7 @@ class _ExploreViewState extends State<ExploreView> {
                     isScrollControlled: true, // Ensure full screen
                     shape: const RoundedRectangleBorder(
                       borderRadius:
-                          BorderRadius.vertical(top: Radius.circular(20)),
+                      BorderRadius.vertical(top: Radius.circular(20)),
                     ),
                     builder: (context) => SizedBox(
                       height: MediaQuery.of(context).size.height * 0.9,
@@ -136,53 +138,68 @@ class _ExploreViewState extends State<ExploreView> {
                 ),
               ),
               // Check if data is still loading
-              propertyViewModel.isLoading
+              offerViewModel.isLoading || propertyViewModel.isLoading
                   ? const Center(
-                      child: CircularProgressIndicator()) // Show loader
-                  : propertyViewModel.properties.isEmpty
-                      ? const Center(child: Text('No properties available'))
-                      : ListView.builder(
-                          physics: const NeverScrollableScrollPhysics(),
-                          shrinkWrap: true,
-                          itemCount: propertyViewModel.properties.length,
-                          itemBuilder: (context, index) {
-                            final property =
-                                propertyViewModel.properties[index];
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 5),
-                              child: GestureDetector(
-                                onTap: () {
-                                  // Navigate to PropertyDetailView on tap
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => PropertyDetailView(
-                                        title: property.title,
-                                        location: property.location,
-                                        rooms: '4', // Set dynamically
-                                        bathrooms: '1', // Set dynamically
-                                        roommates: '3', // Set dynamically
-                                        description: property.description,
-                                        agentName: 'Paula Daza',
-                                        price:
-                                            '1.500.000,00', // Set dynamically
-                                      ),
-                                    ),
-                                  );
-                                },
-                                child: PropertyCard(
-                                  imageUrl:
-                                      'lib/assets/apartment_image.jpg', // Placeholder image
+                  child: CircularProgressIndicator()) // Show loader
+                  : offerViewModel.offers.isEmpty
+                  ? const Center(child: Text('No offers available'))
+                  : ListView.builder(
+                physics: const NeverScrollableScrollPhysics(),
+                shrinkWrap: true,
+                itemCount: offerViewModel.offers.length,
+                itemBuilder: (context, index) {
+                  final offer = offerViewModel.offers[index];
+
+                  return FutureBuilder<Property?>(
+                    future: propertyViewModel.getPropertyById(offer.property_id),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      } else if (snapshot.hasError) {
+                        return const Center(child: Text('Error loading property'));
+                      } else if (!snapshot.hasData || snapshot.data == null) {
+                        return const Center(child: Text('Property not found for this offer'));
+                      }
+
+                      final property = snapshot.data!;
+
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 5),
+                        child: GestureDetector(
+                          onTap: () {
+                            // Navigate to PropertyDetailView on tap
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => PropertyDetailView(
                                   title: property.title,
                                   location: property.location,
-                                  rooms: '4', // Placeholder value
-                                  baths: '1', // Placeholder value
-                                  price: '1.500.000,00', // Placeholder value
+                                  rooms: offer.num_rooms.toString(),
+                                  bathrooms: offer.num_baths.toString(),
+                                  roommates: offer.roommates.toString(),
+                                  description: property.description,
+                                  agentName: 'Paula Daza',
+                                  price: offer.price_per_month
+                                      .toString(), // Price from offer
                                 ),
                               ),
                             );
                           },
+                          child: PropertyCard(
+                            imageUrl:
+                            'lib/assets/apartment_image.jpg', // Placeholder image
+                            title: property.title,
+                            location: property.location,
+                            rooms: offer.num_rooms.toString(),
+                            baths: offer.num_baths.toString(),
+                            price: offer.price_per_month.toString(),
+                          ),
                         ),
+                      );
+                    },
+                  );
+                },
+              ),
             ],
           ),
         ),

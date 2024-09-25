@@ -1,4 +1,4 @@
-import 'package:firebase_database/firebase_database.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import '../models/entities/offer.dart';
@@ -9,8 +9,10 @@ class OfferViewModel extends ChangeNotifier {
   bool _isLoading = false;
 
   static final log = Logger('OfferViewModel');
-  final DatabaseReference _offersRef =
-      FirebaseDatabase.instance.ref().child('offers');
+
+  // Reference to Firestore 'offers' collection
+  final CollectionReference _offersRef =
+      FirebaseFirestore.instance.collection('offers');
 
   /// Getter for offers
   List<Offer> get offers => _offers;
@@ -18,53 +20,55 @@ class OfferViewModel extends ChangeNotifier {
   /// Getter for loading state
   bool get isLoading => _isLoading;
 
-  /// Method to fetch offers from Firebase Realtime Database
+  /// Method to fetch offers from Firestore
   Future<void> fetchOffers() async {
     _setLoading(true);
 
     try {
-      final DataSnapshot snapshot = await _offersRef.get();
+      QuerySnapshot snapshot = await _offersRef.get();
 
-      if (snapshot.exists) {
-        final data = snapshot.value as Map<dynamic, dynamic>;
+      _offers = snapshot.docs.expand((doc) {
+        final offerData = doc.data() as Map<String, dynamic>;
 
-        _offers = data.entries.map((entry) {
-          final offerData = entry.value as Map<dynamic, dynamic>;
+        // Iterate over each entry in the map where the key is the ID and the value is the offer details
+        return offerData.entries.map((entry) {
+          // final id = entry.key;
+          final details = entry.value as Map<String, dynamic>;
 
+          // Create an Offer object using the details map
           return Offer(
-            final_date: offerData['final_date'] ?? '',
-            user_id: offerData['user_id'] ?? '',
-            property_id: offerData['id_property'] ?? 0,
-            initial_date: offerData['initial_date'] ?? '',
-            is_active: offerData['is_active'] ?? false,
-            num_baths: offerData['num_baths'] ?? 0,
-            num_beds: offerData['num_beds'] ?? 0,
-            num_rooms: offerData['num_rooms'] ?? 0,
-            only_andes: offerData['only_andes'] ?? false,
-            price_per_month: offerData['price_per_month'] ?? 0,
-            roommates: offerData['roommates'] ?? 0,
-            type: offerData['type'] ?? '',
+            final_date: details['final_date'] as Timestamp,
+            user_id: details['user_id'] ?? '',
+            property_id: details['id_property'] ?? 0,
+            initial_date: details['initial_date'] as Timestamp,
+            is_active: details['is_active'] ?? false,
+            num_baths: details['num_baths'] ?? 0,
+            num_beds: details['num_beds'] ?? 0,
+            num_rooms: details['num_rooms'] ?? 0,
+            only_andes: details['only_andes'] ?? false,
+            price_per_month: details['price_per_month'] ?? 0,
+            roommates: details['roommates'] ?? 0,
+            type: details['type'] ?? '',
           );
-        }).toList();
+        });
+      }).toList();
 
-        notifyListeners();
-      }
-    } catch (e) {
-      log.shout('Error fetching offers: $e');
+      notifyListeners();
+    } catch (e, stacktrace) {
+      log.shout('Error fetching offers: $e\nStacktrace: $stacktrace');
     } finally {
       _setLoading(false);
     }
   }
 
-  /// Method to add a new offer to Firebase
+  /// Method to add a new offer to Firestore
   Future<void> addOffer(Offer offer) async {
     try {
-      final newOfferRef = _offersRef.push();
-      await newOfferRef.set({
-        'final_date': offer.final_date,
+      await _offersRef.add({
+        'final_date': offer.final_date, // Convert String to Timestamp
         'user_id': offer.user_id,
         'id_property': offer.property_id,
-        'initial_date': offer.initial_date,
+        'initial_date': offer.initial_date, // Convert String to Timestamp
         'is_active': offer.is_active,
         'num_baths': offer.num_baths,
         'num_beds': offer.num_beds,
@@ -82,10 +86,10 @@ class OfferViewModel extends ChangeNotifier {
     }
   }
 
-  /// Method to remove an offer from Firebase by key
-  Future<void> removeOffer(String offerKey) async {
+  /// Method to remove an offer from Firestore by document ID
+  Future<void> removeOffer(String documentId) async {
     try {
-      await _offersRef.child(offerKey).remove();
+      await _offersRef.doc(documentId).delete();
 
       // Fetch the updated offers list
       await fetchOffers();

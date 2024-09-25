@@ -1,12 +1,12 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class UserAction {
   final String action;
-  final String user_id;
   final int property_id;
-  final DateTime timestamp;
+  final Timestamp timestamp;
 
   UserAction({
     required this.action,
-    required this.user_id,
     required this.property_id,
     required this.timestamp,
   });
@@ -15,9 +15,8 @@ class UserAction {
   factory UserAction.fromJson(Map<String, dynamic> json) {
     return UserAction(
       action: json['action'],
-      user_id: json['user_id'],
       property_id: json['property_id'],
-      timestamp: DateTime.parse(json['timestamp']),
+      timestamp: json['timestamp'],
     );
   }
 
@@ -25,22 +24,19 @@ class UserAction {
   Map<String, dynamic> toJson() {
     return {
       'action': action,
-      'user_id': user_id,
       'property_id': property_id,
-      'timestamp': timestamp.toIso8601String(),
+      'timestamp': timestamp.toDate(),
     };
   }
 
   // Method to update a UserAction object
   UserAction copyWith({
     String? action,
-    String? userId,
     int? propertyId,
-    DateTime? timestamp,
+    Timestamp? timestamp,
   }) {
     return UserAction(
       action: action ?? this.action,
-      user_id: userId ?? user_id,
       property_id: propertyId ?? property_id,
       timestamp: timestamp ?? this.timestamp,
     );
