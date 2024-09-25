@@ -29,15 +29,19 @@ class UserActionsViewModel extends ChangeNotifier {
       QuerySnapshot snapshot =
           await _userActionsRef.doc(userId).collection('actions').get();
 
-      _userActions = snapshot.docs.map((doc) {
-        final actionData = doc.data() as Map<String, dynamic>;
+      _userActions = snapshot.docs.expand((doc) {
+        final userActionData = doc.data() as Map<String, dynamic>;
 
-        return UserAction(
-          action: actionData['action'] ?? '',
-          property_id: actionData['property_related'] ?? 0,
-          timestamp: actionData['time']
-              as Timestamp, // Convert Firestore timestamp to DateTime
-        );
+        return userActionData.entries.map((entry) {
+          // final id = doc.id;
+          final details = entry.value as Map<String, dynamic>;
+
+          return UserAction(
+            action: details['action'] ?? '',
+            property_id: details['property_related'] ?? '',
+            timestamp: details['time'] as Timestamp,
+          );
+        });
       }).toList();
 
       notifyListeners();

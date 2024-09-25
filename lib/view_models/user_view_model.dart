@@ -26,18 +26,22 @@ class UserViewModel extends ChangeNotifier {
 
     try {
       QuerySnapshot snapshot = await _usersRef.get();
-
-      _users = snapshot.docs.map((doc) {
+      _users = snapshot.docs.expand((doc) {
         final userData = doc.data() as Map<String, dynamic>;
 
-        return User(
-          name: userData['name'] ?? '',
-          email: doc.id, // Use document ID as the user's email
-          phone: userData['phone'] ?? 0,
-          is_andes: userData['is_andes'] ?? false,
-          type_user: userData['type_user'] ?? '',
-          favorite_offers: List<int>.from(userData['favorite_offers'] ?? []),
-        );
+        return userData.entries.map((entry) {
+          final email = entry.key;
+          final details = entry.value as Map<String, dynamic>;
+
+          return User(
+            email: email,
+            name: details['name'] ?? '',
+            phone: details['phone'] ?? 0,
+            is_andes: details['is_andes'] ?? false,
+            type_user: details['type_user'] ?? '',
+            favorite_offers: List<int>.from(details['favorite_offers'] ?? []),
+          );
+        });
       }).toList();
 
       notifyListeners();
