@@ -27,28 +27,35 @@ class OfferViewModel extends ChangeNotifier {
     try {
       QuerySnapshot snapshot = await _offersRef.get();
 
-      _offers = snapshot.docs.map((doc) {
+      _offers = snapshot.docs.expand((doc) {
         final offerData = doc.data() as Map<String, dynamic>;
 
-        return Offer(
-          final_date: (offerData['final_date'] as Timestamp),
-          user_id: offerData['user_id'] ?? '',
-          property_id: offerData['id_property'] ?? 0,
-          initial_date: (offerData['initial_date'] as Timestamp),
-          is_active: offerData['is_active'] ?? false,
-          num_baths: offerData['num_baths'] ?? 0,
-          num_beds: offerData['num_beds'] ?? 0,
-          num_rooms: offerData['num_rooms'] ?? 0,
-          only_andes: offerData['only_andes'] ?? false,
-          price_per_month: offerData['price_per_month'] ?? 0,
-          roommates: offerData['roommates'] ?? 0,
-          type: offerData['type'] ?? '',
-        );
+        // Iterate over each entry in the map where the key is the ID and the value is the offer details
+        return offerData.entries.map((entry) {
+          // final id = entry.key;
+          final details = entry.value as Map<String, dynamic>;
+
+          // Create an Offer object using the details map
+          return Offer(
+            final_date: details['final_date'] as Timestamp,
+            user_id: details['user_id'] ?? '',
+            property_id: details['id_property'] ?? 0,
+            initial_date: details['initial_date'] as Timestamp,
+            is_active: details['is_active'] ?? false,
+            num_baths: details['num_baths'] ?? 0,
+            num_beds: details['num_beds'] ?? 0,
+            num_rooms: details['num_rooms'] ?? 0,
+            only_andes: details['only_andes'] ?? false,
+            price_per_month: details['price_per_month'] ?? 0,
+            roommates: details['roommates'] ?? 0,
+            type: details['type'] ?? '',
+          );
+        });
       }).toList();
-      print('Offers fetched: ${_offers}');
+
       notifyListeners();
-    } catch (e) {
-      log.shout('Error fetching offers: $e');
+    } catch (e, stacktrace) {
+      log.shout('Error fetching offers: $e\nStacktrace: $stacktrace');
     } finally {
       _setLoading(false);
     }

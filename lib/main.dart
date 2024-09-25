@@ -1,5 +1,4 @@
 import 'package:andlet/view/common/welcome_page.dart';
-import 'package:andlet/view/explore/views/explore_view.dart';
 import 'package:andlet/view_models/offer_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -63,7 +62,7 @@ class MyApp extends StatelessWidget {
           theme: ThemeData(
             primarySwatch: Colors.blue,
           ),
-          home: const ExploreView(),
+          home: const WelcomePage(),
         ),
       ),
     );
