@@ -1,4 +1,6 @@
 import 'package:andlet/view/common/welcome_page.dart';
+import 'package:andlet/view/explore/views/explore_view.dart';
+import 'package:andlet/view_models/offer_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
@@ -49,6 +51,7 @@ class MyApp extends StatelessWidget {
       providers: [
         // Include PropertyViewModel as a ChangeNotifierProvider
         ChangeNotifierProvider(create: (_) => PropertyViewModel()),
+        ChangeNotifierProvider(create: (_) => OfferViewModel()),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -60,7 +63,7 @@ class MyApp extends StatelessWidget {
           theme: ThemeData(
             primarySwatch: Colors.blue,
           ),
-          home: const WelcomePage(),
+          home: const ExploreView(),
         ),
       ),
     );

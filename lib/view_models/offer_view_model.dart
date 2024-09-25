@@ -45,7 +45,7 @@ class OfferViewModel extends ChangeNotifier {
           type: offerData['type'] ?? '',
         );
       }).toList();
-
+      print('Offers fetched: ${_offers}');
       notifyListeners();
     } catch (e) {
       log.shout('Error fetching offers: $e');
