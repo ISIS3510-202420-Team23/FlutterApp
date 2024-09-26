@@ -20,32 +20,37 @@ class LoginViewState extends State<LoginView> {
   final Logger _logger = Logger('LoginView');
 
   /// Function to check profile type and navigate accordingly
-  Future<void> _checkProfileAndNavigate(BuildContext context, String displayName, String photoUrl) async {
+  Future<void> _checkProfileAndNavigate(
+      BuildContext context, String displayName, String photoUrl) async {
+    // Perform the async operation first
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final profileType = prefs.getString('profileType');
 
-    if (profileType != null && profileType == 'tenant') {
-      // If user is already a tenant, navigate directly to ExploreView
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ExploreView(
-            displayName: displayName,
-            photoUrl: photoUrl,
+    // Ensure the context is still valid after the async operation
+    if (context.mounted) {
+      if (profileType != null && profileType == 'tenant') {
+        // If user is already a tenant, navigate directly to ExploreView
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ExploreView(
+              displayName: displayName,
+              photoUrl: photoUrl,
+            ),
           ),
-        ),
-      );
-    } else {
-      // If no profile type set, navigate to ProfilePickerView
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ProfilePickerView(
-            displayName: displayName,
-            photoUrl: photoUrl,
+        );
+      } else {
+        // If no profile type set, navigate to ProfilePickerView
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProfilePickerView(
+              displayName: displayName,
+              photoUrl: photoUrl,
+            ),
           ),
-        ),
-      );
+        );
+      }
     }
   }
 
@@ -57,11 +62,15 @@ class LoginViewState extends State<LoginView> {
         listener: (context, state) {
           // Check if state is either ProfilePickerSuccess or Authenticated
           if (state is ProfilePickerSuccess) {
-            _logger.info('Authentication successful for user: ${state.userEmail}');
-            _checkProfileAndNavigate(context, state.displayName, state.photoUrl);
+            _logger
+                .info('Authentication successful for user: ${state.userEmail}');
+            _checkProfileAndNavigate(
+                context, state.displayName, state.photoUrl);
           } else if (state is Authenticated) {
-            _logger.info('Authentication successful for user: ${state.userEmail}');
-            _checkProfileAndNavigate(context, state.displayName, state.photoUrl);
+            _logger
+                .info('Authentication successful for user: ${state.userEmail}');
+            _checkProfileAndNavigate(
+                context, state.displayName, state.photoUrl);
           } else if (state is AuthError) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text(state.message)),
