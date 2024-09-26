@@ -8,7 +8,14 @@ import 'property_card.dart';
 import 'package:andlet/view/property_details/views/property_detail_view.dart';
 
 class ExploreView extends StatefulWidget {
-  const ExploreView({super.key});
+  final String displayName; // User's Google display name
+  final String photoUrl;    // User's Google profile photo URL
+
+  const ExploreView({
+    super.key,
+    required this.displayName,
+    required this.photoUrl,
+  });
 
   @override
   State<ExploreView> createState() => _ExploreViewState();
@@ -36,116 +43,114 @@ class _ExploreViewState extends State<ExploreView> {
       backgroundColor: Colors.white, // White background
       body: Padding(
         padding: const EdgeInsets.all(25.0),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 25),
-              const Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Welcome,',
-                        style: TextStyle(
-                          fontFamily: 'League Spartan',
-                          fontSize: 40,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF0C356A),
-                        ),
+        child: Column(  // Change here
+          children: [
+            const SizedBox(height: 25),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Welcome,',
+                      style: TextStyle(
+                        fontFamily: 'League Spartan',
+                        fontSize: 40,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF0C356A),
                       ),
-                      Text(
-                        'Daniel',
-                        style: TextStyle(
-                          fontFamily: 'League Spartan',
-                          fontSize: 40,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFFF9A826),
-                        ),
-                      ),
-                    ],
-                  ),
-                  CircleAvatar(
-                    backgroundImage:
-                    AssetImage('lib/assets/dani.jpg'), // Profile image
-                    radius: 30,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              // Search Bar with OnTap to show modal
-              GestureDetector(
-                onTap: () {
-                  showModalBottomSheet(
-                    context: context,
-                    isScrollControlled: true, // Ensure full screen
-                    shape: const RoundedRectangleBorder(
-                      borderRadius:
-                      BorderRadius.vertical(top: Radius.circular(20)),
                     ),
-                    builder: (context) => SizedBox(
-                      height: MediaQuery.of(context).size.height * 0.9,
-                      child: Column(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.only(top: 20, left: 20),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.close,
-                                      color: Color(0xFF0C356A)), // X button
-                                  onPressed: () {
-                                    Navigator.of(context).pop(); // Close modal
-                                  },
-                                ),
-                                const Spacer(),
-                              ],
-                            ),
+                    Text(
+                      widget.displayName,  // Display user's Google name
+                      style: const TextStyle(
+                        fontFamily: 'League Spartan',
+                        fontSize: 40,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFFF9A826),
+                      ),
+                    ),
+                  ],
+                ),
+                CircleAvatar(
+                  backgroundImage: widget.photoUrl.isNotEmpty
+                      ? NetworkImage(widget.photoUrl)  // Display user's Google profile picture
+                      : const AssetImage('lib/assets/dani.jpg') as ImageProvider, // Fallback image
+                  radius: 30,
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            // Search Bar with OnTap to show modal
+            GestureDetector(
+              onTap: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true, // Ensure full screen
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                  ),
+                  builder: (context) => SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.9,
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(top: 20, left: 20),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.close, color: Color(0xFF0C356A)), // X button
+                                onPressed: () {
+                                  Navigator.of(context).pop(); // Close modal
+                                },
+                              ),
+                              const Spacer(),
+                            ],
                           ),
-                          const FilterModal(),
-                        ],
-                      ),
+                        ),
+                        const FilterModal(),
+                      ],
                     ),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 15, vertical: 10), // Increased padding
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFB5D5FF),
-                    borderRadius: BorderRadius.circular(10),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        spreadRadius: 2,
-                      ),
-                    ],
                   ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.search, color: Color(0xFF0C356A)),
-                      SizedBox(width: 10),
-                      Text(
-                        'Search for a place...',
-                        style: TextStyle(color: Color(0xFF0C356A)),
-                      ),
-                    ],
-                  ),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10), // Increased padding
+                decoration: BoxDecoration(
+                  color: const Color(0xFFB5D5FF),
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 10,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.search, color: Color(0xFF0C356A)),
+                    SizedBox(width: 10),
+                    Text(
+                      'Search for a place...',
+                      style: TextStyle(color: Color(0xFF0C356A)),
+                    ),
+                  ],
                 ),
               ),
-              // Check if data is still loading
-              offerViewModel.isLoading || propertyViewModel.isLoading
-                  ? const Center(
-                  child: CircularProgressIndicator()) // Show loader
-                  : offerViewModel.offers.isEmpty
-                  ? const Center(child: Text('No offers available'))
-                  : ListView.builder(
-                physics: const NeverScrollableScrollPhysics(),
-                shrinkWrap: true,
+            ),
+            const SizedBox(height: 10), // Adjust spacing
+            offerViewModel.isLoading || propertyViewModel.isLoading
+                ? const Expanded( // Use Expanded to fill available space
+              child: Center(
+                child: CircularProgressIndicator(
+                  color: Color(0xFF0C356A),
+                ),
+              ),
+            )
+                : Expanded(  // Wrap ListView.builder inside Expanded
+              child: ListView.builder(
                 itemCount: offerViewModel.offers.length,
                 itemBuilder: (context, index) {
                   final offer = offerViewModel.offers[index];
@@ -173,23 +178,21 @@ class _ExploreViewState extends State<ExploreView> {
                               MaterialPageRoute(
                                 builder: (context) => PropertyDetailView(
                                   title: property.title,
-                                  location: property.location,
+                                  location: property.location, // Show location
                                   rooms: offer.num_rooms.toString(),
                                   bathrooms: offer.num_baths.toString(),
                                   roommates: offer.roommates.toString(),
                                   description: property.description,
                                   agentName: 'Paula Daza',
-                                  price: offer.price_per_month
-                                      .toString(), // Price from offer
+                                  price: offer.price_per_month.toString(), // Price from offer
                                 ),
                               ),
                             );
                           },
                           child: PropertyCard(
-                            imageUrl:
-                            'lib/assets/apartment_image.jpg', // Placeholder image
+                            imageUrl: 'lib/assets/apartment_image.jpg', // Placeholder image
                             title: property.title,
-                            location: property.location,
+                            location: property.location, // Show location
                             rooms: offer.num_rooms.toString(),
                             baths: offer.num_baths.toString(),
                             price: offer.price_per_month.toString(),
@@ -200,8 +203,8 @@ class _ExploreViewState extends State<ExploreView> {
                   );
                 },
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
       bottomNavigationBar: NavigationBar(
