@@ -49,6 +49,7 @@ dependencies:
   logging: ^1.2.0
   provider: ^6.1.2
   cloud_firestore: ^5.4.2
+  firebase_storage: ^12.3.1
 
 dev_dependencies:
   flutter_test:

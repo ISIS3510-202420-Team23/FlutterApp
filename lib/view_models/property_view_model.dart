@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import '../models/entities/property.dart';
@@ -9,6 +10,8 @@ class PropertyViewModel extends ChangeNotifier {
   bool _isLoading = false;
 
   static final log = Logger('PropertyViewModel');
+
+  final FirebaseStorage _storage = FirebaseStorage.instance;
 
   final CollectionReference _propertiesRef =
       FirebaseFirestore.instance.collection('properties');
@@ -89,6 +92,21 @@ class PropertyViewModel extends ChangeNotifier {
     }
 
     return null; // Return null if the property is not found or if an error occurs
+  }
+
+  /// Helper method to fetch image URLs from Firebase Storage
+  Future<List<String>> getImageUrls(List<String> imagePaths) async {
+    List<String> imageUrls = [];
+    for (String path in imagePaths) {
+      try {
+        String downloadUrl =
+            await _storage.ref('properties/$path').getDownloadURL();
+        imageUrls.add(downloadUrl);
+      } catch (e) {
+        log.shout('Error fetching image URL for $path: $e');
+      }
+    }
+    return imageUrls;
   }
 
   /// Method to add a new property to Firestore
