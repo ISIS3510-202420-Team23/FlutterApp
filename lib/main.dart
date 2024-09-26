@@ -2,19 +2,24 @@ import 'package:andlet/view/common/welcome_page.dart';
 import 'package:andlet/view_models/offer_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'cas/location_service.dart';
 import 'firebase_options.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:logging/logging.dart';
 import 'package:logging_to_logcat/logging_to_logcat.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:provider/provider.dart'; // Import Provider package
+import 'package:provider/provider.dart';
 import 'view/auth/bloc/auth_bloc.dart';
-import 'view_models/property_view_model.dart'; // Import PropertyViewModel
+import 'view_models/property_view_model.dart';
 
 void main() async {
   await _initializeApp();
 
-  runApp(const MyApp());
+  // Create an instance of LocationService and start tracking
+  LocationService locationService = LocationService();
+  locationService.startTracking();
+
+  runApp(MyApp(locationService: locationService));
 }
 
 /// Initialize the app
@@ -42,19 +47,19 @@ void _setupLogging() {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final LocationService locationService;
+
+  const MyApp({super.key, required this.locationService});
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        // Include PropertyViewModel as a ChangeNotifierProvider
         ChangeNotifierProvider(create: (_) => PropertyViewModel()),
         ChangeNotifierProvider(create: (_) => OfferViewModel()),
       ],
       child: MultiBlocProvider(
         providers: [
-          // Existing AuthBloc
           BlocProvider<AuthBloc>(create: (context) => AuthBloc()),
         ],
         child: MaterialApp(
