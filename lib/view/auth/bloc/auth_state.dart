@@ -14,12 +14,19 @@ class AuthLoading extends AuthState {}
 
 class Authenticated extends AuthState {
   final String userEmail;
+  final String displayName;   // Add displayName
+  final String photoUrl;      // Add photoUrl
 
-  const Authenticated({required this.userEmail});
+  const Authenticated({
+    required this.userEmail,
+    required this.displayName,
+    required this.photoUrl,
+  });
 
   @override
-  List<Object> get props => [userEmail];
+  List<Object> get props => [userEmail, displayName, photoUrl];
 }
+
 
 // State for Google signup success
 class GoogleSignupSuccess extends AuthState {
@@ -33,11 +40,17 @@ class GoogleSignupSuccess extends AuthState {
 
 class ProfilePickerSuccess extends AuthState {
   final String userEmail;
+  final String displayName;
+  final String photoUrl;
 
-  const ProfilePickerSuccess({required this.userEmail});
+  const ProfilePickerSuccess({
+    required this.userEmail,
+    required this.displayName,
+    required this.photoUrl,
+  });
 
   @override
-  List<Object> get props => [userEmail];
+  List<Object> get props => [userEmail, displayName, photoUrl];
 }
 
 class Unauthenticated extends AuthState {}

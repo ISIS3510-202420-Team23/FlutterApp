@@ -1,8 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:andlet/view/explore/views/explore_view.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfilePickerView extends StatelessWidget {
-  const ProfilePickerView({super.key});
+  final String displayName; // Google displayName
+  final String photoUrl;    // Google photoUrl
+
+  const ProfilePickerView({
+    super.key,
+    required this.displayName,
+    required this.photoUrl,
+  });
+
+  Future<void> _setUserProfileType(String profileType) async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('profileType', profileType);
+  }
+
+  Future<void> _navigateToExplore(BuildContext context, String profileType) async {
+    await _setUserProfileType(profileType); // Save the selection
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ExploreView(
+          displayName: displayName,   // Pass the Google displayName
+          photoUrl: photoUrl,         // Pass the Google photoUrl
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,10 +70,7 @@ class ProfilePickerView extends StatelessWidget {
                 children: [
                   ElevatedButton(
                     onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const ExploreView()), // Navigate to ExploreView
-                      );
+                      _navigateToExplore(context, 'tenant'); // Save tenant profile type and navigate
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFFFB900),
@@ -69,7 +92,8 @@ class ProfilePickerView extends StatelessWidget {
                   const SizedBox(height: 20),
                   ElevatedButton(
                     onPressed: () {
-                      // Navigate to the "List my place" flow
+                      _setUserProfileType('landlord');
+                      // Handle landlord flow or navigate accordingly
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF0C356A),

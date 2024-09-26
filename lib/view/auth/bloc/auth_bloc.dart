@@ -29,12 +29,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         email: event.email,
         password: event.password,
       );
-      emit(Authenticated(userEmail: userCredential.user?.email ?? ''));
+      emit(Authenticated(
+        userEmail: userCredential.user?.email ?? '',
+        displayName: userCredential.user?.displayName ?? 'Guest',
+        photoUrl: userCredential.user?.photoURL ?? '',
+      ));
     } catch (e) {
       emit(AuthError(message: 'Login failed: ${e.toString()}'));
     }
   }
 
+  // Method to handle GoogleLoginRequested event
   // Method to handle GoogleLoginRequested event
   Future<void> _onGoogleLoginRequested(GoogleLoginRequested event, Emitter<AuthState> emit) async {
     emit(AuthLoading());
@@ -48,8 +53,16 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         );
 
         UserCredential userCredential = await _auth.signInWithCredential(credential);
-        // Navigate to Profile Picker after successful Google login
-        emit(ProfilePickerSuccess(userEmail: userCredential.user?.email ?? ''));
+        final user = userCredential.user;
+
+        if (user != null) {
+          // Emit the success state with user's displayName and photoUrl
+          emit(ProfilePickerSuccess(
+            userEmail: user.email ?? '',
+            displayName: user.displayName ?? 'User',
+            photoUrl: user.photoURL ?? '',
+          ));
+        }
       } else {
         emit(const AuthError(message: 'Google Sign-In aborted by user.'));
       }
@@ -57,6 +70,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       emit(AuthError(message: 'Google Sign-In failed: ${e.toString()}'));
     }
   }
+
 
   // Method to handle LogoutRequested event
   Future<void> _onLogoutRequested(LogoutRequested event, Emitter<AuthState> emit) async {
