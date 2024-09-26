@@ -1,8 +1,40 @@
 import 'package:flutter/material.dart';
 import 'package:andlet/view/explore/views/explore_view.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfilePickerView extends StatelessWidget {
-  const ProfilePickerView({super.key});
+  final String displayName; // Google displayName
+  final String photoUrl; // Google photoUrl
+
+  const ProfilePickerView({
+    super.key,
+    required this.displayName,
+    required this.photoUrl,
+  });
+
+  Future<void> _setUserProfileType(String profileType) async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('profileType', profileType);
+  }
+
+  Future<void> _navigateToExplore(
+      BuildContext context, String profileType) async {
+    // Save the selection asynchronously first
+    await _setUserProfileType(profileType);
+
+    // Only after the async call completes, navigate
+    if (context.mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ExploreView(
+            displayName: displayName, // Pass the Google displayName
+            photoUrl: photoUrl, // Pass the Google photoUrl
+          ),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -11,11 +43,13 @@ class ProfilePickerView extends StatelessWidget {
       body: Padding(
         padding: const EdgeInsets.all(30.0), // Add padding around the content
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center, // Align text to the center
+          crossAxisAlignment:
+              CrossAxisAlignment.center, // Align text to the center
           children: [
             const SizedBox(height: 40), // Add some space from the top
             const Align(
-              alignment: Alignment.centerLeft, // Keep "Let's start" aligned left
+              alignment:
+                  Alignment.centerLeft, // Keep "Let's start" aligned left
               child: Text(
                 "Let's start!\nFirst...",
                 style: TextStyle(
@@ -44,14 +78,13 @@ class ProfilePickerView extends StatelessWidget {
                 children: [
                   ElevatedButton(
                     onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const ExploreView()), // Navigate to ExploreView
-                      );
+                      _navigateToExplore(context,
+                          'tenant'); // Save tenant profile type and navigate
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFFFB900),
-                      padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 60),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 15, horizontal: 60),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(30),
                       ),
@@ -69,11 +102,13 @@ class ProfilePickerView extends StatelessWidget {
                   const SizedBox(height: 20),
                   ElevatedButton(
                     onPressed: () {
-                      // Navigate to the "List my place" flow
+                      _setUserProfileType('landlord');
+                      // Handle landlord flow or navigate accordingly
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF0C356A),
-                      padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 60),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 15, horizontal: 60),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(30),
                       ),
