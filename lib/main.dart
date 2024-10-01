@@ -17,8 +17,9 @@ void main() async {
 
   // Create an instance of LocationService and start tracking
   LocationService locationService = LocationService();
-  locationService.startTracking();
 
+  locationService.startTracking();
+  locationService.initializeNotifications();
   runApp(MyApp(locationService: locationService));
 }
 
