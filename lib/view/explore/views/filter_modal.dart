@@ -187,7 +187,6 @@ class FilterModalState extends State<FilterModal> {
               ],
             ),
           ),
-          const Divider(),
           if (showPriceSlider)
             Column(
               children: [
@@ -204,7 +203,6 @@ class FilterModalState extends State<FilterModal> {
                   },
                 ),
                 Text('\$${selectedPrice.toInt()}'),
-                const Divider(),
               ],
             ),
           // Slideable Minutes from Campus Field
