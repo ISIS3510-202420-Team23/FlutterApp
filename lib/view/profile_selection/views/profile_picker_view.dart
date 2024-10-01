@@ -1,28 +1,51 @@
-import 'package:flutter/material.dart';
 import 'package:andlet/view/explore/views/explore_view.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:andlet/view_models/user_view_model.dart'; // Import UserViewModel
+import 'package:logging/logging.dart';
+import 'package:andlet/models/entities/user.dart'; // Import User model
 
 class ProfilePickerView extends StatelessWidget {
   final String displayName; // Google displayName
+  final String userEmail; // Google email
   final String photoUrl; // Google photoUrl
 
   const ProfilePickerView({
     super.key,
     required this.displayName,
+    required this.userEmail,
     required this.photoUrl,
   });
 
+  /// Save the user's selected profile type (tenant or landlord) locally.
   Future<void> _setUserProfileType(String profileType) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setString('profileType', profileType);
+    await prefs.setString('profileType', profileType);  // Save profile type to local storage
   }
 
-  Future<void> _navigateToExplore(
-      BuildContext context, String profileType) async {
-    // Save the selection asynchronously first
+  /// Use UserViewModel to post user data to Firestore and navigate.
+  Future<void> _navigateAndSaveUser(BuildContext context, String profileType) async {
+    final userViewModel = Provider.of<UserViewModel>(context, listen: false);
+
+    // Save the profile type locally
     await _setUserProfileType(profileType);
 
-    // Only after the async call completes, navigate
+    // Create a new User object based on the selected profile type
+    final newUser = User(
+      email: userEmail,
+      name: displayName,
+      phone: 0, // Replace with real phone data if available
+      photo: photoUrl,
+      is_andes: true,  // Sample data, adjust accordingly
+      type_user: profileType,
+      favorite_offers: [],  // Default as an empty list for new users
+    );
+
+    // Add user to Firestore via the ViewModel
+    await userViewModel.addUser(newUser);
+
+    // Navigate to ExploreView after saving user data
     if (context.mounted) {
       Navigator.pushReplacement(
         context,
@@ -30,6 +53,7 @@ class ProfilePickerView extends StatelessWidget {
           builder: (context) => ExploreView(
             displayName: displayName, // Pass the Google displayName
             photoUrl: photoUrl, // Pass the Google photoUrl
+            userEmail: userEmail, // Pass the Google email
           ),
         ),
       );
@@ -43,13 +67,11 @@ class ProfilePickerView extends StatelessWidget {
       body: Padding(
         padding: const EdgeInsets.all(30.0), // Add padding around the content
         child: Column(
-          crossAxisAlignment:
-              CrossAxisAlignment.center, // Align text to the center
+          crossAxisAlignment: CrossAxisAlignment.center, // Align text to the center
           children: [
             const SizedBox(height: 40), // Add some space from the top
             const Align(
-              alignment:
-                  Alignment.centerLeft, // Keep "Let's start" aligned left
+              alignment: Alignment.centerLeft, // Keep "Let's start" aligned left
               child: Text(
                 "Let's start!\nFirst...",
                 style: TextStyle(
@@ -78,8 +100,7 @@ class ProfilePickerView extends StatelessWidget {
                 children: [
                   ElevatedButton(
                     onPressed: () {
-                      _navigateToExplore(context,
-                          'tenant'); // Save tenant profile type and navigate
+                      _navigateAndSaveUser(context, 'tenant'); // Save tenant profile type and navigate
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFFFB900),
@@ -102,8 +123,7 @@ class ProfilePickerView extends StatelessWidget {
                   const SizedBox(height: 20),
                   ElevatedButton(
                     onPressed: () {
-                      _setUserProfileType('landlord');
-                      // Handle landlord flow or navigate accordingly
+                      _navigateAndSaveUser(context, 'landlord'); // Save landlord profile type and navigate
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF0C356A),

@@ -5,24 +5,18 @@ import 'package:logging/logging.dart';
 import '../models/entities/property.dart';
 
 class PropertyViewModel extends ChangeNotifier {
-  /// List of properties
   List<Property> _properties = [];
   bool _isLoading = false;
 
   static final log = Logger('PropertyViewModel');
-
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
-  final CollectionReference _propertiesRef =
-      FirebaseFirestore.instance.collection('properties');
+  final CollectionReference _propertiesRef = FirebaseFirestore.instance.collection('properties');
 
-  /// Getter for properties
   List<Property> get properties => _properties;
-
-  /// Getter for loading state
   bool get isLoading => _isLoading;
 
-  /// Method to fetch properties from Firestore
+  /// Method to fetch properties from Firestore with nested fields
   Future<void> fetchProperties() async {
     _setLoading(true);
 
@@ -32,7 +26,7 @@ class PropertyViewModel extends ChangeNotifier {
       _properties = snapshot.docs.expand((doc) {
         final propertyData = doc.data() as Map<String, dynamic>;
 
-        // Iterate over each entry in the map where the key is the ID and the value is the property details
+        // Now we iterate through the nested fields inside the document
         return propertyData.entries.map((entry) {
           final id = entry.key;
           final details = entry.value as Map<String, dynamic>;
@@ -46,8 +40,11 @@ class PropertyViewModel extends ChangeNotifier {
             location: details['location'] ?? const GeoPoint(0, 0),
             photos: List<String>.from(details['photos'] ?? []),
             title: details['title'] ?? '',
+            minutesFromCampus: details['minutes_from_campus'] != null
+                ? (details['minutes_from_campus'] as num).toDouble()
+                : 0.0,
           );
-        });
+        }).toList();
       }).toList();
 
       notifyListeners();
@@ -58,7 +55,21 @@ class PropertyViewModel extends ChangeNotifier {
     }
   }
 
-  /// Method to get a property by its ID (int)
+  // Helper method to fetch image URLs from Firebase Storage
+  Future<List<String>> getImageUrls(List<String> imagePaths) async {
+    List<String> imageUrls = [];
+    for (String path in imagePaths) {
+      try {
+        String downloadUrl =
+        await _storage.ref('properties/$path').getDownloadURL();
+        imageUrls.add(downloadUrl);
+      } catch (e) {
+        log.shout('Error fetching image URL for $path: $e');
+      }
+    }
+    return imageUrls;
+  }
+  /// Method to get a property by its ID
   Future<Property?> getPropertyById(int id) async {
     try {
       // Fetch all documents in the collection
@@ -80,68 +91,21 @@ class PropertyViewModel extends ChangeNotifier {
             location: details['location'] ?? const GeoPoint(0, 0),
             photos: List<String>.from(details['photos'] ?? []),
             title: details['title'] ?? '',
+            minutesFromCampus: (details['minutes_from_campus'] as num?)?.toDouble() ?? 0.0,
           );
         }
       }
 
-      // If we reach this point, no property with the given ID was found
+      // If no property with the given ID was found
       log.info('Property with ID $id not found');
     } catch (e, stacktrace) {
-      log.shout(
-          'Error fetching property by ID $id: $e\nStacktrace: $stacktrace');
+      log.shout('Error fetching property by ID $id: $e\nStacktrace: $stacktrace');
     }
 
-    return null; // Return null if the property is not found or if an error occurs
+    return null;
   }
 
-  /// Helper method to fetch image URLs from Firebase Storage
-  Future<List<String>> getImageUrls(List<String> imagePaths) async {
-    List<String> imageUrls = [];
-    for (String path in imagePaths) {
-      try {
-        String downloadUrl =
-            await _storage.ref('properties/$path').getDownloadURL();
-        imageUrls.add(downloadUrl);
-      } catch (e) {
-        log.shout('Error fetching image URL for $path: $e');
-      }
-    }
-    return imageUrls;
-  }
-
-  /// Method to add a new property to Firestore
-  Future<void> addProperty(Property property) async {
-    try {
-      await _propertiesRef.add({
-        'id': property.id,
-        'address': property.address,
-        'complex_name': property.complex_name,
-        'description': property.description,
-        'location': property.location,
-        'photos': property.photos,
-        'title': property.title,
-      });
-
-      // Fetch the updated properties list
-      await fetchProperties();
-    } catch (e) {
-      log.shout('Error adding property: $e');
-    }
-  }
-
-  /// Method to remove a property from Firestore by document ID
-  Future<void> removeProperty(String documentId) async {
-    try {
-      await _propertiesRef.doc(documentId).delete();
-
-      // Fetch the updated properties list
-      await fetchProperties();
-    } catch (e) {
-      log.shout('Error removing property: $e');
-    }
-  }
-
-  /// Method to update loading state and notify listeners
+  /// Method to update loading state
   void _setLoading(bool loading) {
     _isLoading = loading;
     notifyListeners();
