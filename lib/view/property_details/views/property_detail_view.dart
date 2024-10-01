@@ -1,3 +1,4 @@
+import 'package:andlet/analytics/analytics_engine.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
@@ -194,6 +195,7 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                 agentName: widget.agentName,
                 price: widget.price,
                 onContactPressed: () {
+                  AnalyticsEngine.logContactButtonPressed();
                   setState(() {
                     showContactDetails = !showContactDetails;
                   });
