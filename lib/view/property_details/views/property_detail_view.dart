@@ -3,14 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:andlet/view/property_details/views/custom_bottom_nav_bar.dart';
 
-final List<String> imageUrls = [
-  'lib/assets/apartment_image.jpg',
-  // Add more image URLs if needed
-];
-
 class PropertyDetailView extends StatefulWidget {
   final String title;
   final GeoPoint location;
+  final List<String> imageUrls;
   final String rooms;
   final String bathrooms;
   final String roommates;
@@ -22,6 +18,7 @@ class PropertyDetailView extends StatefulWidget {
     super.key,
     required this.title,
     required this.location,
+    required this.imageUrls,
     required this.rooms,
     required this.bathrooms,
     required this.roommates,
@@ -57,9 +54,9 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                         children: [
                           // Carousel for images
                           CarouselSlider(
-                            items: imageUrls.map((item) {
+                            items: widget.imageUrls.map((item) {
                               return ClipRRect(
-                                child: Image.asset(
+                                child: Image.network(
                                   item,
                                   fit: BoxFit.cover,
                                   width: double.infinity,
@@ -87,13 +84,12 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                             right: 0,
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children: imageUrls.asMap().entries.map((entry) {
+                              children: widget.imageUrls.asMap().entries.map((entry) {
                                 return GestureDetector(
                                   child: Container(
                                     width: 10.0,
                                     height: 10.0,
-                                    margin: const EdgeInsets.symmetric(
-                                        horizontal: 4.0),
+                                    margin: const EdgeInsets.symmetric(horizontal: 4.0),
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
                                       color: _currentPage == entry.key

@@ -2,7 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // For formatting dates
 
 class FilterModal extends StatefulWidget {
-  const FilterModal({super.key});
+  final double? initialPrice;
+  final double? initialMinutes;
+  final DateTimeRange? initialDateRange;
+  final Function(double price, double minutes, DateTimeRange? dateRange) onApply;
+
+  const FilterModal({
+    super.key,
+    this.initialPrice,
+    this.initialMinutes,
+    this.initialDateRange,
+    required this.onApply,
+  });
 
   @override
   FilterModalState createState() => FilterModalState();
@@ -16,6 +27,15 @@ class FilterModalState extends State<FilterModal> {
   bool showPriceSlider = false; // Track if price slider should show
   bool showMinutesSlider = false; // Track if minutes slider should show
 
+  @override
+  void initState() {
+    super.initState();
+    // Initialize filter values with the passed-in initial values
+    selectedPrice = widget.initialPrice ?? selectedPrice;
+    selectedMinutes = widget.initialMinutes ?? selectedMinutes;
+    selectedDateRange = widget.initialDateRange;
+  }
+
   // Method to show date picker for 'From' and 'To' dates
   Future<void> _pickDateRange() async {
     final DateTimeRange? picked = await showDateRangePicker(
@@ -27,22 +47,6 @@ class FilterModalState extends State<FilterModal> {
             start: DateTime.now(),
             end: DateTime.now().add(const Duration(days: 7)),
           ),
-      builder: (context, child) {
-        return Theme(
-          data: ThemeData.light().copyWith(
-            primaryColor: const Color(0xFF0C356A), // Set blue color
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFF0C356A), // Blue color for selected range
-              onPrimary: Colors.white, // Text color on selected days
-              surface: Color(0xFFC5DDFF), // Light blue selection color
-            ),
-            buttonTheme: const ButtonThemeData(
-              textTheme: ButtonTextTheme.primary, // Style for buttons
-            ),
-          ),
-          child: child!,
-        );
-      },
     );
 
     if (picked != null && picked != selectedDateRange) {
@@ -52,13 +56,51 @@ class FilterModalState extends State<FilterModal> {
     }
   }
 
+  // Method to apply the filters
+  void _applyFilters() {
+    widget.onApply(selectedPrice, selectedMinutes, selectedDateRange);
+    Navigator.pop(context); // Close the modal after applying filters
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 15),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Row with 'Close' and 'Apply' buttons
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.close, color: Color(0xFF0C356A)),
+                onPressed: () {
+                  Navigator.of(context).pop(); // Close the modal
+                },
+              ),
+              ElevatedButton(
+                onPressed: _applyFilters, // Call apply filters method
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0C356A), // Set blue background color
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15), // Add some padding for better appearance
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30), // Rounded corners
+                  ),
+                ),
+                child: const Text(
+                  'Apply',
+                  style: TextStyle(
+                    fontFamily: 'Montserrat',
+                    fontSize: 15,
+                    color: Colors.white, // Set white text color
+                    fontWeight: FontWeight.w600, // Make the text bold
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 25),
           // Date Selection Row (Add dates)
           GestureDetector(
             onTap: () {
@@ -82,12 +124,11 @@ class FilterModalState extends State<FilterModal> {
             ),
           ),
           const Divider(),
-          // Show From/To Fields with Date Picker if Add Dates is clicked
           if (showDateFields)
             Column(
               children: [
                 GestureDetector(
-                  onTap: _pickDateRange, // Pick date when clicked
+                  onTap: _pickDateRange,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -98,8 +139,7 @@ class FilterModalState extends State<FilterModal> {
                               fontWeight: FontWeight.w500)),
                       Text(
                         selectedDateRange != null
-                            ? DateFormat('dd/MM/yyyy')
-                                .format(selectedDateRange!.start)
+                            ? DateFormat('dd/MM/yyyy').format(selectedDateRange!.start)
                             : 'Select date',
                       ),
                     ],
@@ -107,7 +147,7 @@ class FilterModalState extends State<FilterModal> {
                 ),
                 const SizedBox(height: 10),
                 GestureDetector(
-                  onTap: _pickDateRange, // Pick date when clicked
+                  onTap: _pickDateRange,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -118,8 +158,7 @@ class FilterModalState extends State<FilterModal> {
                               fontWeight: FontWeight.w500)),
                       Text(
                         selectedDateRange != null
-                            ? DateFormat('dd/MM/yyyy')
-                                .format(selectedDateRange!.end)
+                            ? DateFormat('dd/MM/yyyy').format(selectedDateRange!.end)
                             : 'Select date',
                       ),
                     ],
@@ -128,7 +167,6 @@ class FilterModalState extends State<FilterModal> {
                 const Divider(),
               ],
             ),
-
           // Slideable Price Field
           GestureDetector(
             onTap: () {
@@ -149,7 +187,6 @@ class FilterModalState extends State<FilterModal> {
               ],
             ),
           ),
-          const Divider(),
           if (showPriceSlider)
             Column(
               children: [
@@ -158,17 +195,18 @@ class FilterModalState extends State<FilterModal> {
                   min: 0,
                   max: 10000000,
                   divisions: 100,
-                  activeColor: const Color(0xFF0C356A), // Blue color
+                  activeColor: const Color(0xFF0C356A),
                   onChanged: (value) {
                     setState(() {
                       selectedPrice = value;
                     });
                   },
                 ),
-                Text('\$${selectedPrice.toInt().toString()}'),
-                const Divider(),
+                Text('\$${selectedPrice.toInt()}'),
               ],
             ),
+          // Slideable Minutes from Campus Field
+          const Divider(),
           // Slideable Minutes from Campus Field
           GestureDetector(
             onTap: () {
@@ -198,7 +236,7 @@ class FilterModalState extends State<FilterModal> {
                   min: 0,
                   max: 60,
                   divisions: 60,
-                  activeColor: const Color(0xFF0C356A), // Blue color
+                  activeColor: const Color(0xFF0C356A),
                   onChanged: (value) {
                     setState(() {
                       selectedMinutes = value;

@@ -51,6 +51,7 @@ dependencies:
   logging: ^1.2.0
   provider: ^6.1.2
   cloud_firestore: ^5.4.2
+  firebase_storage: ^12.3.1
   geolocator: ^13.0.1
   flutter_local_notifications: ^17.2.3
 
@@ -85,7 +86,6 @@ flutter:
     - lib/assets/2.svg
     - lib/assets/google.png
     - lib/assets/apartment_image.jpg
-    - lib/assets/dani.jpg
     - lib/assets/pau.jpg
   fonts:
     - family: League Spartan

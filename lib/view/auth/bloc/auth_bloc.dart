@@ -18,6 +18,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
     // Handle Logout
     on<LogoutRequested>(_onLogoutRequested);
+
+    // Handle Google Sign-Up
+    on<GoogleSignupRequested>(_onGoogleSignupRequested);
   }
 
   // Method to handle LoginRequested event
@@ -39,7 +42,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
   }
 
-  // Method to handle GoogleLoginRequested event
   // Method to handle GoogleLoginRequested event
   Future<void> _onGoogleLoginRequested(GoogleLoginRequested event, Emitter<AuthState> emit) async {
     emit(AuthLoading());
@@ -70,6 +72,40 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       emit(AuthError(message: 'Google Sign-In failed: ${e.toString()}'));
     }
   }
+
+  // Method to handle GoogleSignupRequested event
+  Future<void> _onGoogleSignupRequested(GoogleSignupRequested event, Emitter<AuthState> emit) async {
+    emit(AuthLoading());
+    try {
+      final GoogleSignIn googleSignIn = GoogleSignIn(
+        scopes: ['email'],
+      );
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();  // Trigger the sign-up flow
+      if (googleUser != null) {
+        final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+        final AuthCredential credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+
+        UserCredential userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+        final user = userCredential.user;
+
+        if (user != null) {
+          emit(ProfilePickerSuccess(
+            userEmail: user.email ?? '',
+            displayName: user.displayName ?? 'User',
+            photoUrl: user.photoURL ?? '',
+          ));
+        }
+      } else {
+        emit(const AuthError(message: 'Google Sign-Up aborted by user.'));
+      }
+    } catch (e) {
+      emit(AuthError(message: 'Google Sign-Up failed: ${e.toString()}'));
+    }
+  }
+
 
 
   // Method to handle LogoutRequested event

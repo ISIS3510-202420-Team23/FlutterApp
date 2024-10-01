@@ -7,6 +7,7 @@ import 'package:logging/logging.dart';
 import 'package:andlet/view/profile_selection/views/profile_picker_view.dart';
 import 'package:andlet/view/explore/views/explore_view.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
@@ -21,14 +22,15 @@ class LoginViewState extends State<LoginView> {
 
   /// Function to check profile type and navigate accordingly
   Future<void> _checkProfileAndNavigate(
-      BuildContext context, String displayName, String photoUrl) async {
+      BuildContext context, String displayName, String photoUrl, String userEmail) async {
     // Perform the async operation first
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final profileType = prefs.getString('profileType');
 
     // Ensure the context is still valid after the async operation
+    _logger.info('Profile type: $profileType');
     if (context.mounted) {
-      if (profileType != null && profileType == 'tenant') {
+      if (profileType == 'tenant') {
         // If user is already a tenant, navigate directly to ExploreView
         Navigator.pushReplacement(
           context,
@@ -36,6 +38,7 @@ class LoginViewState extends State<LoginView> {
             builder: (context) => ExploreView(
               displayName: displayName,
               photoUrl: photoUrl,
+              userEmail: userEmail,
             ),
           ),
         );
@@ -47,11 +50,19 @@ class LoginViewState extends State<LoginView> {
             builder: (context) => ProfilePickerView(
               displayName: displayName,
               photoUrl: photoUrl,
+              userEmail: userEmail,
             ),
           ),
         );
       }
     }
+  }
+
+  Future<void> _clearSession() async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.clear();  // Clear local storage
+    await FirebaseAuth.instance.signOut();  // Sign out from Firebase
+    _logger.info("Session cleared and user signed out.");
   }
 
   @override
@@ -65,12 +76,12 @@ class LoginViewState extends State<LoginView> {
             _logger
                 .info('Authentication successful for user: ${state.userEmail}');
             _checkProfileAndNavigate(
-                context, state.displayName, state.photoUrl);
+                context, state.displayName, state.photoUrl, state.userEmail);
           } else if (state is Authenticated) {
             _logger
                 .info('Authentication successful for user: ${state.userEmail}');
             _checkProfileAndNavigate(
-                context, state.displayName, state.photoUrl);
+                context, state.displayName, state.photoUrl, state.userEmail);
           } else if (state is AuthError) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text(state.message)),
@@ -126,9 +137,10 @@ class LoginViewState extends State<LoginView> {
                     children: [
                       // New Member Link with "Register now" in bold
                       GestureDetector(
-                        onTap: () {
-                          _logger.info('Navigating to register');
-                          // Handle register now navigation
+                        onTap: () async {
+                          _logger.info('Navigating to Google register');
+                          await _clearSession();  // Clear session when trying to register
+                          BlocProvider.of<AuthBloc>(context).add(const GoogleSignupRequested());
                         },
                         child: RichText(
                           text: const TextSpan(
@@ -155,10 +167,10 @@ class LoginViewState extends State<LoginView> {
                       const SizedBox(height: 10),
                       // Google Sign-up Button
                       ElevatedButton.icon(
-                        onPressed: () {
+                        onPressed: () async {
                           _logger.info('Attempting Google Sign-Up');
-                          BlocProvider.of<AuthBloc>(context)
-                              .add(const GoogleLoginRequested());
+                          await _clearSession();
+                          BlocProvider.of<AuthBloc>(context).add(const GoogleSignupRequested());
                         },
                         icon: Image.asset('lib/assets/google.png', height: 20),
                         label: const Text(
@@ -201,10 +213,8 @@ class LoginViewState extends State<LoginView> {
                       // Google Log-in Button
                       ElevatedButton.icon(
                         onPressed: () {
-                          // Trigger Google Login
                           _logger.info('Attempting Google Login');
-                          BlocProvider.of<AuthBloc>(context)
-                              .add(const GoogleLoginRequested());
+                          BlocProvider.of<AuthBloc>(context).add(const GoogleLoginRequested());
                         },
                         icon: Image.asset('lib/assets/google.png', height: 20),
                         label: const Text(
@@ -217,8 +227,7 @@ class LoginViewState extends State<LoginView> {
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 15, horizontal: 40),
+                          padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 40),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(30),
                           ),

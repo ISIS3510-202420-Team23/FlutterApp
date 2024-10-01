@@ -10,7 +10,7 @@ class Offer {
   final int num_beds;
   final int num_rooms;
   final bool only_andes;
-  final int price_per_month;
+  final double price_per_month;
   final int roommates;
   final String type;
 
@@ -76,7 +76,7 @@ class Offer {
     int? numBeds,
     int? numRooms,
     bool? onlyAndes,
-    int? pricePerMonth,
+    double? pricePerMonth,
     int? roommates,
     String? type,
   }) {
