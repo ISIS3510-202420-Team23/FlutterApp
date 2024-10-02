@@ -41,8 +41,8 @@ class LocationService {
     );
     await flutterLocalNotificationsPlugin.show(
       0,
-      'You are near Universidad de los Andes!',
-      'You have entered the designated area.',
+      'Hey!',
+      'Don\'t miss the latest offers near the university!',
       platformChannelSpecifics,
     );
   }
