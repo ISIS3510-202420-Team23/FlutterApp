@@ -1,3 +1,4 @@
+import 'package:andlet/analytics/analytics_engine.dart';
 import 'package:andlet/view/common/welcome_page.dart';
 import 'package:andlet/view_models/offer_view_model.dart';
 import 'package:flutter/material.dart';
@@ -31,10 +32,13 @@ Future<void> _initializeApp() async {
   // Load environment variables from .env file
   await dotenv.load(fileName: ".env");
 
-  // Initialize Firebase
+  // Initialize and Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Initialize Firebase Analytics
+  AnalyticsEngine.initializeAnalytics();
 
   // Set up logging
   _setupLogging();

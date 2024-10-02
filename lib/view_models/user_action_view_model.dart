@@ -53,13 +53,26 @@ class UserActionsViewModel extends ChangeNotifier {
   }
 
   /// Method to add a new user action to Firestore for a specific user
-  Future<void> addUserAction(String userId, UserAction userAction) async {
+  Future<void> addUserAction(String userId, String action) async {
+    String initial_num;
+
+    if (action == 'filter') {
+      initial_num = '1';
+    } else if (action == 'contact') {
+      initial_num = '2';
+    } else {
+      initial_num = '';
+    }
+
     try {
-      // Add the action under the specific user's collection
-      await _userActionsRef.doc(userId).collection('actions').add({
-        'action': userAction.action,
-        'property_related': userAction.property_id,
-        'time': DateTime.timestamp(), // Convert DateTime to Firestore timestamp
+      // Add the action under the specific user's document in 'user_actions' collection
+      await _userActionsRef
+          .doc('${initial_num}_${userId}_${DateTime.now().toIso8601String()}')
+          .set({
+        'action': action,
+        'app': 'flutter', // Set the app field as 'swift' based on the image
+        'date': Timestamp.now(), // Use Firestore Timestamp for date
+        'user_id': userId, // User ID as shown in the image
       });
 
       // Fetch the updated user actions list

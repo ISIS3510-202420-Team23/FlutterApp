@@ -13,6 +13,7 @@ class Offer {
   final double price_per_month;
   final int roommates;
   final String type;
+  final int offerId;
 
   Offer({
     required this.final_date,
@@ -27,6 +28,7 @@ class Offer {
     required this.price_per_month,
     required this.roommates,
     required this.type,
+    required this.offerId,
   });
 
   // Factory method to create an Offer object from JSON
@@ -44,6 +46,7 @@ class Offer {
       price_per_month: json['price_per_month'],
       roommates: json['roommates'],
       type: json['type'],
+      offerId: json['offerId'],
     );
   }
 
@@ -62,6 +65,7 @@ class Offer {
       'price_per_month': price_per_month,
       'roommates': roommates,
       'type': type,
+      'offerId': offerId,
     };
   }
 
@@ -79,6 +83,7 @@ class Offer {
     double? pricePerMonth,
     int? roommates,
     String? type,
+    int? offerId,
   }) {
     return Offer(
       final_date: finalDate ?? final_date,
@@ -93,6 +98,7 @@ class Offer {
       price_per_month: pricePerMonth ?? price_per_month,
       roommates: roommates ?? this.roommates,
       type: type ?? this.type,
+      offerId: offerId ?? this.offerId,
     );
   }
 }
