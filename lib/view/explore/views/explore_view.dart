@@ -2,11 +2,13 @@ import 'package:andlet/analytics/analytics_engine.dart';
 import 'package:andlet/view_models/user_action_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../cas/user_lastContact_landloard.dart';
 import '../../../view_models/offer_view_model.dart';
 import '../../../view_models/property_view_model.dart';
 import '../../../view_models/user_view_model.dart'; // Import UserViewModel
 import 'filter_modal.dart';
 import 'property_card.dart';
+
 import 'package:andlet/view/property_details/views/property_detail_view.dart';
 
 class ExploreView extends StatefulWidget {
@@ -45,6 +47,8 @@ class _ExploreViewState extends State<ExploreView> {
           .fetchOffersWithFilters();
       Provider.of<PropertyViewModel>(context, listen: false).fetchProperties();
       fetchUserPreferences(); // Fetch user preferences
+      NotificationService notificationService = NotificationService();
+      notificationService.checkLastContactAction(widget.userEmail);
     });
   }
 
@@ -99,6 +103,7 @@ class _ExploreViewState extends State<ExploreView> {
     final userViewModel = Provider.of<UserViewModel>(
         context); // Use UserViewModel to fetch agent data
     String firstName = widget.displayName.split(' ').first;
+    final sortedOffers = _sortOffers(offerViewModel.offersWithProperties);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -203,7 +208,19 @@ class _ExploreViewState extends State<ExploreView> {
                         color: Color(0xFF0C356A),
                       ),
                     ),
-                  )
+            ) : sortedOffers.isEmpty
+                ? const Expanded(
+              child: Center(
+                child: Text(
+                  'No properties match your filters.',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF0C356A),
+                  ),
+                ),
+              ),
+            )
                 : Expanded(
                     child: ListView.builder(
                       itemCount:

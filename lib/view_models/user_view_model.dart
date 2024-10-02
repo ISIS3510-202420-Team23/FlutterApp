@@ -62,7 +62,6 @@ class UserViewModel extends ChangeNotifier {
 
       if (usersDoc.exists) {
         var userData = usersDoc[encodedUserId] as Map<String, dynamic>;
-        log.info('Fetched user: $userData');
         return userData;
       } else {
         throw Exception('User not found for id: $userId');

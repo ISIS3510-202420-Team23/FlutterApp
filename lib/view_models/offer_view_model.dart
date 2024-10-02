@@ -106,8 +106,6 @@ class OfferViewModel extends ChangeNotifier {
       // Fetch properties
       DocumentSnapshot propertyDoc =
           await _propertiesRef.doc('X8qn8e6UXKberOSYZnXk').get();
-      log.info(
-          'Fetched propertyDoc: ${propertyDoc.data()}'); // Log the propertyDoc data
       Map<String, Property> propertyMap = _mapSnapshotToProperties(propertyDoc);
 
       // Safeguard in case the properties document is missing or has no data
@@ -119,10 +117,7 @@ class OfferViewModel extends ChangeNotifier {
       }
 
       // Fetch offers
-      DocumentSnapshot offersDoc =
-          await _offersRef.doc('E2amoJzmIbhtLq65ScpY').get();
-      log.info(
-          'Fetched offersDoc: ${offersDoc.data()}'); // Log the offersDoc data
+      DocumentSnapshot offersDoc = await _offersRef.doc('E2amoJzmIbhtLq65ScpY').get();
 
       // Check if the offers document exists and has the expected structure
       if (offersDoc.exists && offersDoc.data() != null) {
@@ -173,6 +168,8 @@ class OfferViewModel extends ChangeNotifier {
 
               log.info('Created offer: $offer'); // Log the created offer
 
+
+
               // Apply filters if necessary
               if (_applyFilters(
                   offer, property, minPrice, maxPrice, maxMinutes, dateRange)) {
@@ -187,7 +184,6 @@ class OfferViewModel extends ChangeNotifier {
 
         // Set filtered results
         _offersWithProperties = tempOffersWithProperties;
-        log.info('Filtered offers count: ${_offersWithProperties.length}');
         notifyListeners();
       } else {
         log.warning("Offer document does not exist or is empty");
