@@ -1,6 +1,9 @@
+import 'package:andlet/view_models/user_action_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:andlet/view/property_details/views/custom_bottom_nav_bar.dart';
+
+import '../../../analytics/analytics_engine.dart';
 
 class PropertyDetailView extends StatefulWidget {
   final String title;
@@ -14,6 +17,7 @@ class PropertyDetailView extends StatefulWidget {
   final String agentEmail;
   final String agentPhoto;
   final String price;
+  final String userEmail;
 
   const PropertyDetailView({
     super.key,
@@ -28,6 +32,7 @@ class PropertyDetailView extends StatefulWidget {
     required this.agentEmail,
     required this.agentPhoto,
     required this.price,
+    required this.userEmail,
   });
 
   @override
@@ -59,26 +64,26 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                           CarouselSlider(
                             items: widget.imageUrls.isNotEmpty
                                 ? widget.imageUrls.map((item) {
-                              return ClipRRect(
-                                child: Image.network(
-                                  item,
-                                  fit: BoxFit.cover,
-                                  width: double.infinity,
-                                ),
-                              );
-                            }).toList()
+                                    return ClipRRect(
+                                      child: Image.network(
+                                        item,
+                                        fit: BoxFit.cover,
+                                        width: double.infinity,
+                                      ),
+                                    );
+                                  }).toList()
                                 : [
-                              const Center(
-                                child: Text(
-                                  'No images available',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                              )
-                            ], // Fallback when the image list is empty
+                                    const Center(
+                                      child: Text(
+                                        'No images available',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.black,
+                                        ),
+                                      ),
+                                    )
+                                  ], // Fallback when the image list is empty
                             options: CarouselOptions(
                               height: 400.0,
                               viewportFraction: 1.0,
@@ -100,12 +105,14 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                             right: 0,
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children: widget.imageUrls.asMap().entries.map((entry) {
+                              children:
+                                  widget.imageUrls.asMap().entries.map((entry) {
                                 return GestureDetector(
                                   child: Container(
                                     width: 10.0,
                                     height: 10.0,
-                                    margin: const EdgeInsets.symmetric(horizontal: 4.0),
+                                    margin: const EdgeInsets.symmetric(
+                                        horizontal: 4.0),
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
                                       color: _currentPage == entry.key
@@ -211,6 +218,8 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                 price: widget.price,
                 onContactPressed: () {
                   AnalyticsEngine.logContactButtonPressed();
+                  UserActionsViewModel()
+                      .addUserAction(widget.userEmail, 'contact');
                   setState(() {
                     showContactDetails = !showContactDetails;
                   });

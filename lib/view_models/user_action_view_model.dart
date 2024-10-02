@@ -60,8 +60,6 @@ class UserActionsViewModel extends ChangeNotifier {
       initial_num = '1';
     } else if (action == 'contact') {
       initial_num = '2';
-    } else if (action == 'publish') {
-      initial_num = '3';
     } else {
       initial_num = '';
     }
@@ -69,7 +67,7 @@ class UserActionsViewModel extends ChangeNotifier {
     try {
       // Add the action under the specific user's document in 'user_actions' collection
       await _userActionsRef
-          .doc('$initial_num${userId}_${DateTime.now().toIso8601String()}')
+          .doc('${initial_num}_${userId}_${DateTime.now().toIso8601String()}')
           .set({
         'action': action,
         'app': 'flutter', // Set the app field as 'swift' based on the image

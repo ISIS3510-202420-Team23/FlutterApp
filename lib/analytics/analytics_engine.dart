@@ -26,5 +26,10 @@ class AnalyticsEngine {
     );
   }
 
-  //TODO: Log filter button pressed event
+  /// Log an event when the user presses the filter button
+  static void logFilterButtonPressed() {
+    _instance.logEvent(name: 'filter_button_pressed', parameters: {
+      'time': DateTime.now().toIso8601String(),
+    });
+  }
 }
