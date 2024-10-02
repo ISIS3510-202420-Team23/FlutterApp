@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'dart:math';
@@ -6,21 +5,21 @@ import 'dart:math';
 class PropertyCard extends StatefulWidget {
   final List<String> imageUrls;
   final String title;
-  final GeoPoint location;
+  final String address;
   final String rooms;
   final String baths;
   final String price;
-  final String roommates; // Add roommates field
+  final String roommates;
 
   const PropertyCard({
     super.key,
     required this.imageUrls,
     required this.title,
-    required this.location,
+    required this.address,
     required this.rooms,
     required this.baths,
     required this.price,
-    required this.roommates, // Pass roommates in constructor
+    required this.roommates,
   });
 
   @override
@@ -28,32 +27,33 @@ class PropertyCard extends StatefulWidget {
 }
 
 class _PropertyCardState extends State<PropertyCard> {
-  int _currentSlide = 0; // Track current slide
-  bool _isAutoPlaying = true; // Track autoplay status
+  int _currentSlide = 0;
+  bool _isAutoPlaying = true;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
         ClipRRect(
-          borderRadius: BorderRadius.circular(25), // Rounded corners for the carousel
+          borderRadius: BorderRadius.circular(25),
           child: SizedBox(
-            height: 200, // Height for the image carousel
+            height: 200,
             width: double.infinity,
-            child: CarouselSlider.builder(
+            child: widget.imageUrls.isNotEmpty
+                ? CarouselSlider.builder(
               itemCount: widget.imageUrls.length,
               itemBuilder: (context, index, realIndex) {
                 return Image.network(
-                  widget.imageUrls[index], // Use the current image URL
-                  fit: BoxFit.cover, // Ensure image covers the container without stretching
+                  widget.imageUrls[index],
+                  fit: BoxFit.cover,
                   width: double.infinity,
                   errorBuilder: (context, error, stackTrace) {
-                    return const Icon(Icons.error, color: Colors.red); // Show error icon if image fails to load
+                    return const Icon(Icons.error, color: Colors.red);
                   },
                   loadingBuilder: (context, child, loadingProgress) {
                     if (loadingProgress == null) return child;
                     return const Center(
-                      child: CircularProgressIndicator(), // Show loader while image is loading
+                      child: CircularProgressIndicator(),
                     );
                   },
                 );
@@ -61,29 +61,40 @@ class _PropertyCardState extends State<PropertyCard> {
               options: CarouselOptions(
                 height: 200.0,
                 viewportFraction: 1.0,
-                autoPlay: _isAutoPlaying, // Auto play only while _isAutoPlaying is true
-                autoPlayInterval: Duration(seconds: Random().nextInt(3) + 4), // Random interval between 4 and 6 seconds
+                autoPlay: _isAutoPlaying,
+                autoPlayInterval: Duration(seconds: Random().nextInt(3) + 4),
                 onPageChanged: (index, reason) {
                   setState(() {
                     _currentSlide = index;
-
-                    // Stop autoplay when the last image is reached
                     if (_currentSlide == widget.imageUrls.length - 1) {
                       _isAutoPlaying = false;
                     }
                   });
                 },
               ),
+            )
+                : Container(
+              color: Colors.grey[300],
+              child: const Center(
+                child: Text(
+                  'No images available',
+                  style: TextStyle(
+                    color: Colors.black54,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
             ),
           ),
         ),
         Card(
-          color: Colors.white, // White card background
+          color: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(15),
           ),
-          margin: const EdgeInsets.only(top: 0, bottom: 15), // Small space between image and card
-          elevation: 0, // Slight elevation to give the card a background effect
+          margin: const EdgeInsets.only(top: 10, bottom: 15),
+          elevation: 0,
           child: Padding(
             padding: const EdgeInsets.all(15.0),
             child: Column(
@@ -97,13 +108,13 @@ class _PropertyCardState extends State<PropertyCard> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                const SizedBox(height: 0),
+                const SizedBox(height: 5),
                 Row(
                   children: [
                     const Icon(Icons.location_on, size: 16, color: Colors.black),
-                    const SizedBox(width: 0),
+                    const SizedBox(width: 5),
                     Text(
-                      '[${widget.location.latitude}, ${widget.location.longitude}]',
+                      widget.address,
                       style: const TextStyle(
                         fontFamily: 'League Spartan',
                         fontSize: 14,
@@ -112,7 +123,7 @@ class _PropertyCardState extends State<PropertyCard> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 0),
+                const SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -132,9 +143,9 @@ class _PropertyCardState extends State<PropertyCard> {
                     ),
                     Row(
                       children: [
-                        const Icon(Icons.group, size: 16, color: Colors.black), // Icon for roommates
+                        const Icon(Icons.group, size: 16, color: Colors.black),
                         const SizedBox(width: 5),
-                        Text(widget.roommates, style: const TextStyle(color: Colors.black)), // Display roommates
+                        Text(widget.roommates, style: const TextStyle(color: Colors.black)),
                       ],
                     ),
                     Text(
@@ -156,3 +167,4 @@ class _PropertyCardState extends State<PropertyCard> {
     );
   }
 }
+

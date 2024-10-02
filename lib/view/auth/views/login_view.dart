@@ -30,7 +30,7 @@ class LoginViewState extends State<LoginView> {
     // Ensure the context is still valid after the async operation
     _logger.info('Profile type: $profileType');
     if (context.mounted) {
-      if (profileType == 'tenant') {
+      if (profileType == 'student') {
         // If user is already a tenant, navigate directly to ExploreView
         Navigator.pushReplacement(
           context,
@@ -139,8 +139,11 @@ class LoginViewState extends State<LoginView> {
                       GestureDetector(
                         onTap: () async {
                           _logger.info('Navigating to Google register');
-                          await _clearSession();  // Clear session when trying to register
-                          BlocProvider.of<AuthBloc>(context).add(const GoogleSignupRequested());
+                          await _clearSession();
+                          if (context.mounted) { // Clear session when trying to register
+                            BlocProvider.of<AuthBloc>(context).add(
+                                const GoogleSignupRequested());
+                          }
                         },
                         child: RichText(
                           text: const TextSpan(
@@ -170,7 +173,10 @@ class LoginViewState extends State<LoginView> {
                         onPressed: () async {
                           _logger.info('Attempting Google Sign-Up');
                           await _clearSession();
-                          BlocProvider.of<AuthBloc>(context).add(const GoogleSignupRequested());
+                          if (context.mounted) {
+                            BlocProvider.of<AuthBloc>(context).add(
+                                const GoogleSignupRequested());
+                          }
                         },
                         icon: Image.asset('lib/assets/google.png', height: 20),
                         label: const Text(
