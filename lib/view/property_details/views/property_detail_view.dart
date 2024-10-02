@@ -1,33 +1,32 @@
-import 'package:andlet/analytics/analytics_engine.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:andlet/view/property_details/views/custom_bottom_nav_bar.dart';
 
-final List<String> imageUrls = [
-  'lib/assets/apartment_image.jpg',
-  // Add more image URLs if needed
-];
-
 class PropertyDetailView extends StatefulWidget {
   final String title;
-  final GeoPoint location;
+  final String address;
+  final List<String> imageUrls;
   final String rooms;
   final String bathrooms;
   final String roommates;
-  final String description;
+  final String? description;
   final String agentName;
+  final String agentEmail;
+  final String agentPhoto;
   final String price;
 
   const PropertyDetailView({
     super.key,
     required this.title,
-    required this.location,
+    required this.address,
+    required this.imageUrls,
     required this.rooms,
     required this.bathrooms,
     required this.roommates,
     required this.description,
     required this.agentName,
+    required this.agentEmail,
+    required this.agentPhoto,
     required this.price,
   });
 
@@ -56,17 +55,30 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                     children: [
                       Stack(
                         children: [
-                          // Carousel for images
+                          // Carousel for images, with check for empty list
                           CarouselSlider(
-                            items: imageUrls.map((item) {
+                            items: widget.imageUrls.isNotEmpty
+                                ? widget.imageUrls.map((item) {
                               return ClipRRect(
-                                child: Image.asset(
+                                child: Image.network(
                                   item,
                                   fit: BoxFit.cover,
                                   width: double.infinity,
                                 ),
                               );
-                            }).toList(),
+                            }).toList()
+                                : [
+                              const Center(
+                                child: Text(
+                                  'No images available',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              )
+                            ], // Fallback when the image list is empty
                             options: CarouselOptions(
                               height: 400.0,
                               viewportFraction: 1.0,
@@ -88,13 +100,12 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                             right: 0,
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children: imageUrls.asMap().entries.map((entry) {
+                              children: widget.imageUrls.asMap().entries.map((entry) {
                                 return GestureDetector(
                                   child: Container(
                                     width: 10.0,
                                     height: 10.0,
-                                    margin: const EdgeInsets.symmetric(
-                                        horizontal: 4.0),
+                                    margin: const EdgeInsets.symmetric(horizontal: 4.0),
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
                                       color: _currentPage == entry.key
@@ -130,7 +141,7 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                                     size: 20, color: Colors.black),
                                 const SizedBox(width: 5),
                                 Text(
-                                  '[${widget.location.latitude}, ${widget.location.longitude}]',
+                                  widget.address,
                                   style: const TextStyle(
                                     fontFamily: 'League Spartan',
                                     fontWeight: FontWeight.w300,
@@ -174,7 +185,9 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                             ),
                             const SizedBox(height: 5),
                             Text(
-                              widget.description,
+                              widget.description?.isNotEmpty ?? false
+                                  ? widget.description!
+                                  : 'No description provided',
                               style: const TextStyle(
                                 fontFamily: 'League Spartan',
                                 fontWeight: FontWeight.w300,
@@ -193,6 +206,8 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
               // Custom Bottom Navbar
               CustomBottomNavbar(
                 agentName: widget.agentName,
+                agentPhoto: widget.agentPhoto,
+                agentEmail: widget.agentEmail,
                 price: widget.price,
                 onContactPressed: () {
                   AnalyticsEngine.logContactButtonPressed();
@@ -209,12 +224,12 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                       .size
                       .width, // Ensures it stretches across the screen width
                   padding: const EdgeInsets.all(10.0),
-                  child: const Center(
+                  child: Center(
                     // Centers the text inside the container
                     child: Text(
-                      'Email: paula.daza@example.com',
+                      'Email: ${widget.agentEmail}', // Correctly referencing agentEmail
                       textAlign: TextAlign.center, // Centers the text itself
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontFamily: 'League Spartan',
                         fontWeight: FontWeight.w600,
                         fontSize: 18,

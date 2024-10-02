@@ -12,6 +12,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 import 'view/auth/bloc/auth_bloc.dart';
 import 'view_models/property_view_model.dart';
+import 'view_models/user_view_model.dart';
 
 void main() async {
   await _initializeApp();
@@ -60,11 +61,14 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        // Include PropertyViewModel as a ChangeNotifierProvider
         ChangeNotifierProvider(create: (_) => PropertyViewModel()),
         ChangeNotifierProvider(create: (_) => OfferViewModel()),
+        ChangeNotifierProvider(create: (_) => UserViewModel()),
       ],
       child: MultiBlocProvider(
         providers: [
+          // Existing AuthBloc
           BlocProvider<AuthBloc>(create: (context) => AuthBloc()),
         ],
         child: MaterialApp(

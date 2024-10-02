@@ -1,21 +1,23 @@
 import 'package:andlet/analytics/analytics_engine.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../models/entities/property.dart';
-import '../../../view_models/offer_view_model.dart'; // Offers ViewModel
-import '../../../view_models/property_view_model.dart'; // Property ViewModel
+import '../../../view_models/offer_view_model.dart';
+import '../../../view_models/property_view_model.dart';
+import '../../../view_models/user_view_model.dart';  // Import UserViewModel
 import 'filter_modal.dart';
 import 'property_card.dart';
 import 'package:andlet/view/property_details/views/property_detail_view.dart';
 
 class ExploreView extends StatefulWidget {
-  final String displayName; // User's Google display name
-  final String photoUrl; // User's Google profile photo URL
+  final String displayName;
+  final String photoUrl;
+  final String userEmail;
 
   const ExploreView({
     super.key,
     required this.displayName,
     required this.photoUrl,
+    required this.userEmail,
   });
 
   @override
@@ -24,30 +26,77 @@ class ExploreView extends StatefulWidget {
 
 class _ExploreViewState extends State<ExploreView> {
   int currentPageIndex = 0;
+  bool showShakeAlert = false;
+  bool? userRoommatePreference; // Roommate preference
+
+  // State variables to store selected filters
+  double? selectedPrice;
+  double? selectedMinutes;
+  DateTimeRange? selectedDateRange;
 
   @override
   void initState() {
     super.initState();
-    // Fetch offers once the widget is mounted
+
+    // Fetch offers and properties once the widget is mounted without any filters
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<OfferViewModel>(context, listen: false).fetchOffers();
-      Provider.of<PropertyViewModel>(context, listen: false)
-          .fetchProperties(); // Fetch properties as well
+      Provider.of<OfferViewModel>(context, listen: false).fetchOffersWithFilters();
+      Provider.of<PropertyViewModel>(context, listen: false).fetchProperties();
+      fetchUserPreferences(); // Fetch user preferences
     });
+  }
+
+  // Fetch user preferences for roommates from Firestore
+  Future<void> fetchUserPreferences() async {
+    try {
+      var userPreferences = await Provider.of<OfferViewModel>(context, listen: false).fetchUserRoommatePreferences(widget.userEmail);
+      setState(() {
+        userRoommatePreference = userPreferences; // true for prefers roommates, false for no roommates
+      });
+    } catch (e) {
+      print('Error fetching user preferences: $e');
+    }
+  }
+
+  // Apply filters on offers
+  void _applyFilters(double? price, double? minutes, DateTimeRange? dateRange) {
+    setState(() {
+      selectedPrice = price;
+      selectedMinutes = minutes;
+      selectedDateRange = dateRange;
+    });
+
+    Provider.of<OfferViewModel>(context, listen: false)
+        .fetchOffersWithFilters(maxPrice: price, maxMinutes: minutes, dateRange: dateRange);
+  }
+
+  // Sort offers based on roommate preference
+  List<OfferWithProperty> _sortOffers(List<OfferWithProperty> offers) {
+    if (userRoommatePreference == null) return offers; // No preference, return as is
+
+    offers.sort((a, b) {
+      if (userRoommatePreference == true) {
+        return b.offer.roommates.compareTo(a.offer.roommates);
+      } else {
+        return a.offer.roommates.compareTo(b.offer.roommates);
+      }
+    });
+
+    return offers;
   }
 
   @override
   Widget build(BuildContext context) {
     final offerViewModel = Provider.of<OfferViewModel>(context);
-    final propertyViewModel =
-        Provider.of<PropertyViewModel>(context); // Access PropertyViewModel
+    final propertyViewModel = Provider.of<PropertyViewModel>(context);
+    final userViewModel = Provider.of<UserViewModel>(context);  // Use UserViewModel to fetch agent data
+    String firstName = widget.displayName.split(' ').first;
 
     return Scaffold(
-      backgroundColor: Colors.white, // White background
+      backgroundColor: Colors.white,
       body: Padding(
         padding: const EdgeInsets.all(25.0),
         child: Column(
-          // Change here
           children: [
             const SizedBox(height: 25),
             Row(
@@ -66,7 +115,7 @@ class _ExploreViewState extends State<ExploreView> {
                       ),
                     ),
                     Text(
-                      widget.displayName, // Display user's Google name
+                      firstName,
                       style: const TextStyle(
                         fontFamily: 'League Spartan',
                         fontSize: 40,
@@ -78,54 +127,37 @@ class _ExploreViewState extends State<ExploreView> {
                 ),
                 CircleAvatar(
                   backgroundImage: widget.photoUrl.isNotEmpty
-                      ? NetworkImage(widget
-                          .photoUrl) // Display user's Google profile picture
-                      : const AssetImage('lib/assets/dani.jpg')
-                          as ImageProvider, // Fallback image
+                      ? NetworkImage(widget.photoUrl)
+                      : const AssetImage('lib/assets/personaicono.jpg') as ImageProvider,
                   radius: 30,
                 ),
               ],
             ),
             const SizedBox(height: 20),
-            // Search Bar with OnTap to show modal
             GestureDetector(
               onTap: () {
                 showModalBottomSheet(
                   context: context,
-                  isScrollControlled: true, // Ensure full screen
+                  isScrollControlled: true,
                   shape: const RoundedRectangleBorder(
                     borderRadius:
                         BorderRadius.vertical(top: Radius.circular(20)),
                   ),
                   builder: (context) => SizedBox(
                     height: MediaQuery.of(context).size.height * 0.9,
-                    child: Column(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(top: 20, left: 20),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.close,
-                                    color: Color(0xFF0C356A)), // X button
-                                onPressed: () {
-                                  Navigator.of(context).pop(); // Close modal
-                                },
-                              ),
-                              const Spacer(),
-                            ],
-                          ),
-                        ),
-                        const FilterModal(),
-                      ],
+                    child: FilterModal(
+                      initialPrice: selectedPrice,
+                      initialMinutes: selectedMinutes,
+                      initialDateRange: selectedDateRange,
+                      onApply: (price, minutes, dateRange) {
+                        _applyFilters(price, minutes, dateRange);
+                      },
                     ),
                   ),
                 );
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 15, vertical: 10), // Increased padding
+                padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
                 decoration: BoxDecoration(
                   color: const Color(0xFFB5D5FF),
                   borderRadius: BorderRadius.circular(10),
@@ -149,84 +181,95 @@ class _ExploreViewState extends State<ExploreView> {
                 ),
               ),
             ),
-            const SizedBox(height: 10), // Adjust spacing
+            const SizedBox(height: 10),
             offerViewModel.isLoading || propertyViewModel.isLoading
                 ? const Expanded(
-                    // Use Expanded to fill available space
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        color: Color(0xFF0C356A),
-                      ),
-                    ),
-                  )
+              child: Center(
+                child: CircularProgressIndicator(
+                  color: Color(0xFF0C356A),
+                ),
+              ),
+            )
                 : Expanded(
-                    // Wrap ListView.builder inside Expanded
-                    child: ListView.builder(
-                      itemCount: offerViewModel.offers.length,
-                      itemBuilder: (context, index) {
-                        final offer = offerViewModel.offers[index];
+              child: ListView.builder(
+                itemCount: _sortOffers(offerViewModel.offersWithProperties).length,
+                itemBuilder: (context, index) {
+                  final offerWithProperty = _sortOffers(offerViewModel.offersWithProperties)[index];
+                  final offer = offerWithProperty.offer;
+                  final property = offerWithProperty.property;
 
-                        return FutureBuilder<Property?>(
-                          future: propertyViewModel
-                              .getPropertyById(offer.property_id),
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState ==
-                                ConnectionState.waiting) {
-                              return const Center(
-                                  child: CircularProgressIndicator());
-                            } else if (snapshot.hasError) {
-                              return const Center(
-                                  child: Text('Error loading property'));
-                            } else if (!snapshot.hasData ||
-                                snapshot.data == null) {
-                              return const Center(
-                                  child: Text(
-                                      'Property not found for this offer'));
-                            }
+                  return FutureBuilder<List<String>>(
+                    future: propertyViewModel.getImageUrls(property.photos),
+                    builder: (context, imageSnapshot) {
+                      if (imageSnapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      } else if (imageSnapshot.hasError) {
+                        return const Center(child: Text('Error loading images'));
+                      }
 
-                            final property = snapshot.data!;
+                      final imageUrls = imageSnapshot.data ?? [];
 
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 5),
-                              child: GestureDetector(
-                                onTap: () {
-                                  AnalyticsEngine.logViewPropertyDetails(
-                                      property.id);
-                                  // Navigate to PropertyDetailView on tap
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => PropertyDetailView(
-                                        title: property.title,
-                                        location:
-                                            property.location, // Show location
-                                        rooms: offer.num_rooms.toString(),
-                                        bathrooms: offer.num_baths.toString(),
-                                        roommates: offer.roommates.toString(),
-                                        description: property.description,
-                                        agentName: 'Paula Daza',
-                                        price: offer.price_per_month
-                                            .toString(), // Price from offer
-                                      ),
+                      return FutureBuilder<Map<String, dynamic>>(
+                        future: userViewModel.fetchUserById(offer.user_id),  // Fetch the user (agent) by user_id
+                        builder: (context, agentSnapshot) {
+                          if (agentSnapshot.connectionState == ConnectionState.waiting) {
+                            return const Center(child: CircularProgressIndicator());
+                          } else if (agentSnapshot.hasError || !agentSnapshot.hasData) {
+                            return const Center(child: Text('Error loading agent data'));
+                          }
+
+                          final agentData = agentSnapshot.data!;
+                          final agentName = agentData['name'];
+                          final agentPhoto = agentData['photo'];
+                          final agentEmail = agentData['email'];
+
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 5),
+                            child: GestureDetector(
+                              onTap: () async {
+                                // Increment the view counter
+                                bool hasRoommates = offer.roommates > 0;
+                                await Provider.of<OfferViewModel>(context, listen: false)
+                                    .incrementUserViewCounter(widget.userEmail, hasRoommates);
+
+                                // Navigate to property details with agent info
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => PropertyDetailView(
+                                      title: property.title,
+                                      address: property.address,
+                                      imageUrls: imageUrls,
+                                      rooms: offer.num_rooms.toString(),
+                                      bathrooms: offer.num_baths.toString(),
+                                      roommates: offer.roommates.toString(),
+                                      description: property.description,
+                                      agentName: agentName,
+                                      agentEmail: agentEmail,
+                                      agentPhoto: agentPhoto,
+                                      price: offer.price_per_month.toString(),
                                     ),
-                                  );
-                                },
-                                child: PropertyCard(
-                                  imageUrl:
-                                      'lib/assets/apartment_image.jpg', // Placeholder image
-                                  title: property.title,
-                                  location: property.location, // Show location
-                                  rooms: offer.num_rooms.toString(),
-                                  baths: offer.num_baths.toString(),
-                                  price: offer.price_per_month.toString(),
-                                ),
+                                  ),
+                                );
+                              },
+                              child: PropertyCard(
+                                imageUrls: imageUrls,  // Image URLs fetched from the property
+                                title: property.title,
+                                address: property.address,
+                                rooms: offer.num_rooms.toString(),
+                                baths: offer.num_baths.toString(),
+                                roommates: offer.roommates.toString(),
+                                price: offer.price_per_month.toString(),
                               ),
-                            );
-                          },
-                        );
-                      },
-                    ),
-                  ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
           ],
         ),
       ),

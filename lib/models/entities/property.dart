@@ -4,10 +4,11 @@ class Property {
   int id;
   String address;
   String complex_name;
-  String description;
-  GeoPoint location;
+  String? description;
+  GeoPoint? location;
   List<String> photos;
   String title;
+  double minutesFromCampus;
 
   // Constructor
   Property({
@@ -18,6 +19,7 @@ class Property {
     required this.location,
     required this.photos,
     required this.title,
+    required this.minutesFromCampus,
   });
 
   // Factory method to create a Property object from Firebase data (JSON)
@@ -30,6 +32,7 @@ class Property {
       location: json['location'] as GeoPoint,
       photos: List<String>.from(json['photos'] as List<dynamic>),
       title: json['title'] as String,
+      minutesFromCampus: json['minutes_from_campus'] as double,
     );
   }
 
@@ -43,11 +46,12 @@ class Property {
       'location': location,
       'photos': photos,
       'title': title,
+      'minutes_from_campus': minutesFromCampus,
     };
   }
 
   @override
   String toString() {
-    return 'Property{id: $id, address: $address, complex_name: $complex_name, description: $description, location: $location, photos: $photos, title: $title}';
+    return 'Property{id: $id, address: $address, complex_name: $complex_name, description: $description, location: $location, photos: $photos, title: $title, minutesFromCampus: $minutesFromCampus}';
   }
 }
