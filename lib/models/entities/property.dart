@@ -4,8 +4,8 @@ class Property {
   int id;
   String address;
   String complex_name;
-  String description;
-  GeoPoint location;
+  String? description;
+  GeoPoint? location;
   List<String> photos;
   String title;
   double minutesFromCampus;

@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../models/entities/property.dart';
 import '../../../view_models/offer_view_model.dart';
 import '../../../view_models/property_view_model.dart';
+import '../../../view_models/user_view_model.dart';  // Import UserViewModel
 import 'filter_modal.dart';
 import 'property_card.dart';
 import 'package:andlet/view/property_details/views/property_detail_view.dart';
-import 'package:intl/intl.dart';
 
 class ExploreView extends StatefulWidget {
   final String displayName;
@@ -74,16 +73,22 @@ class _ExploreViewState extends State<ExploreView> {
   List<OfferWithProperty> _sortOffers(List<OfferWithProperty> offers) {
     if (userRoommatePreference == null) return offers; // No preference, return as is
 
-    return offers
-        .where((offer) =>
-    userRoommatePreference == true ? offer.offer.roommates > 0 : offer.offer.roommates == 0)
-        .toList();
+    offers.sort((a, b) {
+      if (userRoommatePreference == true) {
+        return b.offer.roommates.compareTo(a.offer.roommates);
+      } else {
+        return a.offer.roommates.compareTo(b.offer.roommates);
+      }
+    });
+
+    return offers;
   }
 
   @override
   Widget build(BuildContext context) {
     final offerViewModel = Provider.of<OfferViewModel>(context);
     final propertyViewModel = Provider.of<PropertyViewModel>(context);
+    final userViewModel = Provider.of<UserViewModel>(context);  // Use UserViewModel to fetch agent data
     String firstName = widget.displayName.split(' ').first;
 
     return Scaffold(
@@ -202,37 +207,61 @@ class _ExploreViewState extends State<ExploreView> {
 
                       final imageUrls = imageSnapshot.data ?? [];
 
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 5),
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => PropertyDetailView(
-                                  title: property.title,
-                                  location: property.location,
-                                  imageUrls: imageUrls,
-                                  rooms: offer.num_rooms.toString(),
-                                  bathrooms: offer.num_baths.toString(),
-                                  roommates: offer.roommates.toString(),
-                                  description: property.description,
-                                  agentName: 'Paula Daza',
-                                  price: offer.price_per_month.toString(),
-                                ),
+                      return FutureBuilder<Map<String, dynamic>>(
+                        future: userViewModel.fetchUserById(offer.user_id),  // Fetch the user (agent) by user_id
+                        builder: (context, agentSnapshot) {
+                          if (agentSnapshot.connectionState == ConnectionState.waiting) {
+                            return const Center(child: CircularProgressIndicator());
+                          } else if (agentSnapshot.hasError || !agentSnapshot.hasData) {
+                            return const Center(child: Text('Error loading agent data'));
+                          }
+
+                          final agentData = agentSnapshot.data!;
+                          final agentName = agentData['name'];
+                          final agentPhoto = agentData['photo'];
+                          final agentEmail = agentData['email'];
+
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 5),
+                            child: GestureDetector(
+                              onTap: () async {
+                                // Increment the view counter
+                                bool hasRoommates = offer.roommates > 0;
+                                await Provider.of<OfferViewModel>(context, listen: false)
+                                    .incrementUserViewCounter(widget.userEmail, hasRoommates);
+
+                                // Navigate to property details with agent info
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => PropertyDetailView(
+                                      title: property.title,
+                                      address: property.address,
+                                      imageUrls: imageUrls,
+                                      rooms: offer.num_rooms.toString(),
+                                      bathrooms: offer.num_baths.toString(),
+                                      roommates: offer.roommates.toString(),
+                                      description: property.description,
+                                      agentName: agentName,
+                                      agentEmail: agentEmail,
+                                      agentPhoto: agentPhoto,
+                                      price: offer.price_per_month.toString(),
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: PropertyCard(
+                                imageUrls: imageUrls,  // Image URLs fetched from the property
+                                title: property.title,
+                                address: property.address,
+                                rooms: offer.num_rooms.toString(),
+                                baths: offer.num_baths.toString(),
+                                roommates: offer.roommates.toString(),
+                                price: offer.price_per_month.toString(),
                               ),
-                            );
-                          },
-                          child: PropertyCard(
-                            imageUrls: imageUrls,
-                            title: property.title,
-                            location: property.location,
-                            rooms: offer.num_rooms.toString(),
-                            baths: offer.num_baths.toString(),
-                            roommates: offer.roommates.toString(),
-                            price: offer.price_per_month.toString(),
-                          ),
-                        ),
+                            ),
+                          );
+                        },
                       );
                     },
                   );

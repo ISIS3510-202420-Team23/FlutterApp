@@ -37,6 +37,23 @@ class OfferViewModel extends ChangeNotifier {
     }
   }
 
+  Future<void> incrementUserViewCounter(String userEmail, bool hasRoommates) async {
+    final userViewsRef = FirebaseFirestore.instance.collection('user_views');
+
+    try {
+      DocumentReference docRef = userViewsRef.doc(userEmail);
+
+      // Update the respective counter based on whether the property has roommates
+      if (hasRoommates) {
+        await docRef.update({'roommates_views': FieldValue.increment(1)});
+      } else {
+        await docRef.update({'no_roommates_views': FieldValue.increment(1)});
+      }
+    } catch (e) {
+      log.shout('Error incrementing view counter: $e');
+    }
+  }
+
   /// Fetch all offers and associated properties, then apply filters
   Future<void> fetchOffersWithFilters({
     double? minPrice,
@@ -127,6 +144,8 @@ class OfferViewModel extends ChangeNotifier {
     }
   }
 
+
+
   /// Map Firestore snapshot to Property model considering nested structure
   Map<String, Property> _mapSnapshotToProperties(DocumentSnapshot snapshot) {
     Map<String, Property> propertyMap = {};
@@ -135,10 +154,8 @@ class OfferViewModel extends ChangeNotifier {
       var propertiesData = snapshot.data() as Map<String, dynamic>;
       log.info('Mapping properties from data: $propertiesData');  // Log the properties data
 
-      // Iterate over the fields and use the key as the property id
       propertiesData.forEach((key, propertyData) {
         try {
-          // Using the 'key' as the 'id' since the 'id' field is missing
           int propertyId = int.tryParse(key) ?? 0;
 
           // Handle both int and double for minutes_from_campus
@@ -148,23 +165,35 @@ class OfferViewModel extends ChangeNotifier {
           } else if (propertyData['minutes_from_campus'] is double) {
             minutesFromCampus = propertyData['minutes_from_campus'];
           } else {
-            throw Exception("Invalid type for minutes_from_campus");
+            // Default to 0 if the value is not valid
+            minutesFromCampus = 0;
+          }
+
+          // Handle optional fields
+          String? description = propertyData['description'] ?? "No description provided";
+          List<String> photos = List<String>.from(propertyData['photos'] ?? []);
+
+          // Handle GeoPoint - allow empty or invalid locations
+          var location = propertyData['location'];
+          GeoPoint? geoPoint;
+          if (location is GeoPoint) {
+            geoPoint = location;
+          } else {
+            geoPoint = null; // Default to null if not a valid GeoPoint
           }
 
           Property property = Property(
-            id: propertyId,  // Assign the key as the id
-            address: propertyData['address'],
-            complex_name: propertyData['complex_name'],
-            description: propertyData['description'],
-            location: propertyData['location'],
-            photos: List<String>.from(propertyData['photos']),
+            id: propertyId,
+            address: propertyData['address'] ?? 'No address provided', // Default to a placeholder if no address
+            complex_name: propertyData['complex_name'] ?? 'Unnamed complex', // Default if complex_name is missing
+            description: description,
+            location: geoPoint, // Accepting null locations
+            photos: photos,
             minutesFromCampus: minutesFromCampus,
-            title: propertyData['title'],
+            title: propertyData['title'] ?? 'Untitled Property', // Default if title is missing
           );
 
-          // Use the property ID to map the property
           propertyMap[propertyId.toString()] = property;
-
         } catch (e) {
           log.warning("Error mapping property with key $key: $e");
         }
@@ -218,8 +247,6 @@ class OfferViewModel extends ChangeNotifier {
 
     return true;
   }
-
-
 
 
   /// Set loading state

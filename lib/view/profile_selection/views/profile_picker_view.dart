@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:andlet/view_models/user_view_model.dart'; // Import UserViewModel
-import 'package:logging/logging.dart';
 import 'package:andlet/models/entities/user.dart'; // Import User model
 
 class ProfilePickerView extends StatelessWidget {
@@ -17,6 +16,8 @@ class ProfilePickerView extends StatelessWidget {
     required this.userEmail,
     required this.photoUrl,
   });
+
+
 
   /// Save the user's selected profile type (tenant or landlord) locally.
   Future<void> _setUserProfileType(String profileType) async {
@@ -45,7 +46,10 @@ class ProfilePickerView extends StatelessWidget {
     // Add user to Firestore via the ViewModel
     await userViewModel.addUser(newUser);
 
-    // Navigate to ExploreView after saving user data
+    // Create the user_views document if it doesn't already exist
+    await userViewModel.createUserViewsDocumentIfNotExists(userEmail);
+
+    // Navigate to ExploreView after saving user data and creating user_views doc
     if (context.mounted) {
       Navigator.pushReplacement(
         context,
@@ -59,6 +63,7 @@ class ProfilePickerView extends StatelessWidget {
       );
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -100,7 +105,7 @@ class ProfilePickerView extends StatelessWidget {
                 children: [
                   ElevatedButton(
                     onPressed: () {
-                      _navigateAndSaveUser(context, 'tenant'); // Save tenant profile type and navigate
+                      _navigateAndSaveUser(context, 'student'); // Save tenant profile type and navigate
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFFFB900),

@@ -54,6 +54,39 @@ class UserViewModel extends ChangeNotifier {
     }
   }
 
+  Future<Map<String, dynamic>> fetchUserById(String userId) async {
+    try {
+      // Encode userId (replace dots with underscores)
+      String encodedUserId = userId.replaceAll('.', '_');
+      DocumentSnapshot usersDoc = await _usersRef.doc('eBbttobInFQe6i9wLHSF').get(); // Fixed document ID
+
+      if (usersDoc.exists) {
+        var userData = usersDoc[encodedUserId] as Map<String, dynamic>;
+        log.info('Fetched user: $userData');
+        return userData;
+      } else {
+        throw Exception('User not found for id: $userId');
+      }
+    } catch (e) {
+      log.shout('Error fetching user by id: $e');
+      rethrow;
+    }
+  }
+
+  // Method to create user_views document if it doesn't exist
+  Future<void> createUserViewsDocumentIfNotExists(String userEmail) async {
+    final CollectionReference userViewsRef = FirebaseFirestore.instance.collection('user_views');
+
+    DocumentSnapshot userDoc = await userViewsRef.doc(userEmail).get();
+    if (!userDoc.exists) {
+      // Create a new document with 0 values for views
+      await userViewsRef.doc(userEmail).set({
+        'roommates_views': 0,
+        'no_roommates_views': 0,
+      });
+    }
+  }
+
   /// Method to add a new user as a subfield inside a single Firestore document
   Future<void> addUser(User user) async {
     try {
@@ -110,6 +143,7 @@ class UserViewModel extends ChangeNotifier {
       log.shout('Error removing user: $e');
     }
   }
+
 
   /// Method to encode email by replacing dots to prevent Firestore nesting
   String _encodeEmail(String email) {

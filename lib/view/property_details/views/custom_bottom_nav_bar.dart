@@ -2,12 +2,16 @@ import 'package:flutter/material.dart';
 
 class CustomBottomNavbar extends StatelessWidget {
   final String agentName;
+  final String agentPhoto;
+  final String agentEmail;
   final String price;
   final VoidCallback onContactPressed;
 
   const CustomBottomNavbar({
     super.key,
     required this.agentName,
+    required this.agentPhoto,
+    required this.agentEmail,
     required this.price,
     required this.onContactPressed,
   });
@@ -23,9 +27,8 @@ class CustomBottomNavbar extends StatelessWidget {
         children: [
           Row(
             children: [
-              const CircleAvatar(
-                backgroundImage: AssetImage(
-                    'lib/assets/pau.jpg'), // Add the correct asset or color
+              CircleAvatar(
+                backgroundImage: NetworkImage(agentPhoto), // Removed const
                 radius: 25,
               ),
               const SizedBox(width: 12),
