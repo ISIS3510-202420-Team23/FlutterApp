@@ -208,12 +208,6 @@ class _ExploreViewState extends State<ExploreView> {
                         color: Color(0xFF0C356A),
                       ),
                     ),
-                  )
-              child: Center(
-                child: CircularProgressIndicator(
-                  color: Color(0xFF0C356A),
-                ),
-              ),
             ) : sortedOffers.isEmpty
                 ? const Expanded(
               child: Center(

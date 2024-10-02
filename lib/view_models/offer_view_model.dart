@@ -104,11 +104,8 @@ class OfferViewModel extends ChangeNotifier {
 
     try {
       // Fetch properties
-      DocumentSnapshot propertyDoc = await _propertiesRef.doc('X8qn8e6UXKberOSYZnXk').get();
       DocumentSnapshot propertyDoc =
           await _propertiesRef.doc('X8qn8e6UXKberOSYZnXk').get();
-      log.info(
-          'Fetched propertyDoc: ${propertyDoc.data()}'); // Log the propertyDoc data
       Map<String, Property> propertyMap = _mapSnapshotToProperties(propertyDoc);
 
       // Safeguard in case the properties document is missing or has no data
@@ -120,10 +117,6 @@ class OfferViewModel extends ChangeNotifier {
       }
 
       // Fetch offers
-      DocumentSnapshot offersDoc =
-          await _offersRef.doc('E2amoJzmIbhtLq65ScpY').get();
-      log.info(
-          'Fetched offersDoc: ${offersDoc.data()}'); // Log the offersDoc data
       DocumentSnapshot offersDoc = await _offersRef.doc('E2amoJzmIbhtLq65ScpY').get();
 
       // Check if the offers document exists and has the expected structure
