@@ -1,8 +1,69 @@
-import 'package:flutter/material.dart';
 import 'package:andlet/view/explore/views/explore_view.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:andlet/view_models/user_view_model.dart'; // Import UserViewModel
+import 'package:andlet/models/entities/user.dart'; // Import User model
 
 class ProfilePickerView extends StatelessWidget {
-  const ProfilePickerView({super.key});
+  final String displayName; // Google displayName
+  final String userEmail; // Google email
+  final String photoUrl; // Google photoUrl
+
+  const ProfilePickerView({
+    super.key,
+    required this.displayName,
+    required this.userEmail,
+    required this.photoUrl,
+  });
+
+
+
+  /// Save the user's selected profile type (tenant or landlord) locally.
+  Future<void> _setUserProfileType(String profileType) async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('profileType', profileType);  // Save profile type to local storage
+  }
+
+  /// Use UserViewModel to post user data to Firestore and navigate.
+  Future<void> _navigateAndSaveUser(BuildContext context, String profileType) async {
+    final userViewModel = Provider.of<UserViewModel>(context, listen: false);
+
+    // Save the profile type locally
+    await _setUserProfileType(profileType);
+
+    // Create a new User object based on the selected profile type
+    final newUser = User(
+      email: userEmail,
+      name: displayName,
+      phone: 0, // Replace with real phone data if available
+      photo: photoUrl,
+      is_andes: true,  // Sample data, adjust accordingly
+      type_user: profileType,
+      favorite_offers: [],  // Default as an empty list for new users
+    );
+
+    // Add user to Firestore via the ViewModel
+    await userViewModel.addUser(newUser);
+
+    // Create the user_views document if it doesn't already exist
+    await userViewModel.createUserViewsDocumentIfNotExists(userEmail);
+
+    // Navigate to ExploreView after saving user data and creating user_views doc
+    if (context.mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ExploreView(
+            displayName: displayName, // Pass the Google displayName
+            photoUrl: photoUrl, // Pass the Google photoUrl
+            userEmail: userEmail, // Pass the Google email
+          ),
+        ),
+      );
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -44,14 +105,12 @@ class ProfilePickerView extends StatelessWidget {
                 children: [
                   ElevatedButton(
                     onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const ExploreView()), // Navigate to ExploreView
-                      );
+                      _navigateAndSaveUser(context, 'student'); // Save tenant profile type and navigate
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFFFB900),
-                      padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 60),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 15, horizontal: 60),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(30),
                       ),
@@ -69,11 +128,12 @@ class ProfilePickerView extends StatelessWidget {
                   const SizedBox(height: 20),
                   ElevatedButton(
                     onPressed: () {
-                      // Navigate to the "List my place" flow
+                      _navigateAndSaveUser(context, 'landlord'); // Save landlord profile type and navigate
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF0C356A),
-                      padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 60),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 15, horizontal: 60),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(30),
                       ),

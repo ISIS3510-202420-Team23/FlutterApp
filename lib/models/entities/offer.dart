@@ -1,16 +1,19 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class Offer {
-  final String final_date;
+  final Timestamp final_date;
   final String user_id;
   final int property_id;
-  final String initial_date;
+  final Timestamp initial_date;
   final bool is_active;
   final int num_baths;
   final int num_beds;
   final int num_rooms;
   final bool only_andes;
-  final int price_per_month;
+  final double price_per_month;
   final int roommates;
   final String type;
+  final int offerId;
 
   Offer({
     required this.final_date,
@@ -25,6 +28,7 @@ class Offer {
     required this.price_per_month,
     required this.roommates,
     required this.type,
+    required this.offerId,
   });
 
   // Factory method to create an Offer object from JSON
@@ -42,6 +46,7 @@ class Offer {
       price_per_month: json['price_per_month'],
       roommates: json['roommates'],
       type: json['type'],
+      offerId: json['offerId'],
     );
   }
 
@@ -60,23 +65,25 @@ class Offer {
       'price_per_month': price_per_month,
       'roommates': roommates,
       'type': type,
+      'offerId': offerId,
     };
   }
 
   // Method to update an Offer object
   Offer copyWith({
-    String? finalDate,
+    Timestamp? finalDate,
     String? userId,
     int? propertyId,
-    String? initialDate,
+    Timestamp? initialDate,
     bool? isActive,
     int? numBaths,
     int? numBeds,
     int? numRooms,
     bool? onlyAndes,
-    int? pricePerMonth,
+    double? pricePerMonth,
     int? roommates,
     String? type,
+    int? offerId,
   }) {
     return Offer(
       final_date: finalDate ?? final_date,
@@ -91,6 +98,7 @@ class Offer {
       price_per_month: pricePerMonth ?? price_per_month,
       roommates: roommates ?? this.roommates,
       type: type ?? this.type,
+      offerId: offerId ?? this.offerId,
     );
   }
 }
