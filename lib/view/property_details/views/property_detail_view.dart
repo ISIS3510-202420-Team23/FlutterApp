@@ -1,8 +1,9 @@
-import 'package:andlet/view_models/user_action_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
+import 'package:url_launcher/url_launcher.dart'; // Import the url_launcher package
 import 'package:andlet/view/property_details/views/custom_bottom_nav_bar.dart';
-
+import 'package:andlet/view_models/user_action_view_model.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 import '../../../analytics/analytics_engine.dart';
 
 class PropertyDetailView extends StatefulWidget {
@@ -41,9 +42,7 @@ class PropertyDetailView extends StatefulWidget {
 
 class PropertyDetailViewState extends State<PropertyDetailView> {
   int _currentPage = 0; // Track current carousel page
-
-  // Track whether to show the contact details
-  bool showContactDetails = false;
+  bool showContactDetails = false; // Track whether to show contact details
 
   @override
   Widget build(BuildContext context) {
@@ -64,26 +63,26 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                           CarouselSlider(
                             items: widget.imageUrls.isNotEmpty
                                 ? widget.imageUrls.map((item) {
-                                    return ClipRRect(
-                                      child: Image.network(
-                                        item,
-                                        fit: BoxFit.cover,
-                                        width: double.infinity,
-                                      ),
-                                    );
-                                  }).toList()
+                              return ClipRRect(
+                                child: Image.network(
+                                  item,
+                                  fit: BoxFit.cover,
+                                  width: double.infinity,
+                                ),
+                              );
+                            }).toList()
                                 : [
-                                    const Center(
-                                      child: Text(
-                                        'No images available',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.black,
-                                        ),
-                                      ),
-                                    )
-                                  ], // Fallback when the image list is empty
+                              const Center(
+                                child: Text(
+                                  'No images available',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              )
+                            ], // Fallback when the image list is empty
                             options: CarouselOptions(
                               height: 400.0,
                               viewportFraction: 1.0,
@@ -105,8 +104,10 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                             right: 0,
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children:
-                                  widget.imageUrls.asMap().entries.map((entry) {
+                              children: widget.imageUrls
+                                  .asMap()
+                                  .entries
+                                  .map((entry) {
                                 return GestureDetector(
                                   child: Container(
                                     width: 10.0,
@@ -218,8 +219,10 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                 price: widget.price,
                 onContactPressed: () {
                   AnalyticsEngine.logContactButtonPressed();
-                  UserActionsViewModel()
-                      .addUserAction(widget.userEmail, 'contact');
+                  UserActionsViewModel().addUserAction(
+                    widget.userEmail,
+                    'contact',
+                  );
                   setState(() {
                     showContactDetails = !showContactDetails;
                   });
@@ -229,27 +232,31 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
                   color: const Color(0xFFF9EFD7), // Light yellow background
-                  width: MediaQuery.of(context)
-                      .size
-                      .width, // Ensures it stretches across the screen width
+                  width: MediaQuery.of(context).size.width, // Ensures it stretches across the screen width
                   padding: const EdgeInsets.all(10.0),
                   child: Center(
-                    // Centers the text inside the container
-                    child: Text(
-                      'Email: ${widget.agentEmail}', // Correctly referencing agentEmail
-                      textAlign: TextAlign.center, // Centers the text itself
-                      style: const TextStyle(
-                        fontFamily: 'League Spartan',
-                        fontWeight: FontWeight.w600,
-                        fontSize: 18,
-                        color: Color(0xFF0C356A),
+                    child: GestureDetector(
+                      onTap: () => _openEmailClient(
+                        widget.agentEmail, // Email address of the agent
+                        widget.title, // Property title
+                        widget.agentName, // Name of the agent
+                      ),
+                      child: Text(
+                        'Email: ${widget.agentEmail}',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontFamily: 'League Spartan',
+                          fontWeight: FontWeight.w600,
+                          fontSize: 18,
+                          color: Color(0xFF0C356A),
+                          decoration: TextDecoration.underline,
+                        ),
                       ),
                     ),
                   ),
                 ),
             ],
           ),
-          // Positioned Back Button (Static)
           Positioned(
             top: 50,
             left: 20,
@@ -295,4 +302,36 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
       ),
     );
   }
+
+  // Helper method to open the email client
+  Future<void> _openEmailClient(String email, String propertyTitle, String userName) async {
+    final String subject = "Interested in $propertyTitle property";
+    final String body = "Hello $userName,\n\nI would like to know more about the availability of the offer $propertyTitle that you published on Andlet";
+
+    final String encodedSubject = Uri.encodeComponent(subject);
+    final String encodedBody = Uri.encodeComponent(body);
+
+    final Uri emailUri = Uri(
+      scheme: 'mailto',
+      path: email,
+      query: 'subject=$encodedSubject&body=$encodedBody',
+    );
+
+    final BuildContext currentContext = context;  // Save context before async call
+
+    try {
+      if (await canLaunchUrl(emailUri)) {
+        await launchUrl(emailUri);
+      } else {
+        throw 'Could not launch $emailUri';
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(currentContext).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
+  }
+
+
+
 }
