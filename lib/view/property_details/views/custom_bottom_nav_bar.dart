@@ -28,7 +28,10 @@ class CustomBottomNavbar extends StatelessWidget {
           Row(
             children: [
               CircleAvatar(
-                backgroundImage: NetworkImage(agentPhoto), // Removed const
+                backgroundImage: agentPhoto.isNotEmpty
+                    ? NetworkImage(agentPhoto)
+                    : const AssetImage('lib/assets/personaicono.png')
+                as ImageProvider,
                 radius: 25,
               ),
               const SizedBox(width: 12),

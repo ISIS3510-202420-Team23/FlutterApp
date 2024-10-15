@@ -33,13 +33,14 @@ dependencies:
   flutter_bloc: ^8.0.0
   equatable: ^2.0.3
   firebase_auth: ^5.2.1
-  firebase_core: ^3.4.1 # Update this to match firebase_database requirements
+  firebase_core: ^3.4.1
   firebase_database: ^11.1.2
   google_sign_in: ^5.0.7
   flutter_signin_button: ^2.0.0
   carousel_slider: ^5.0.0
   intl: ^0.17.0
   shared_preferences: ^2.0.11 # Or the latest version
+  url_launcher: ^6.0.20
 
 
 
@@ -83,6 +84,7 @@ flutter:
     - .env
     - lib/assets/andlet.png
     - lib/assets/andletlogosf.png
+    - lib/assets/personaicono.png
     - lib/assets/1.svg
     - lib/assets/2.svg
     - lib/assets/google.png
