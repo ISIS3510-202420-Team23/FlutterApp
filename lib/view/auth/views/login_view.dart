@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';  // Import for responsiveness
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
@@ -98,33 +99,33 @@ class LoginViewState extends State<LoginView> {
             );
           }
           return Padding(
-            padding: const EdgeInsets.all(30.0),
+            padding: EdgeInsets.all(30.r), // Responsive padding
             child: Column(
               children: [
                 // Top section with welcome text aligned to the left
-                const Align(
+                Align(
                   alignment: Alignment.topLeft,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SizedBox(height: 40), // Adjust the top space
+                      SizedBox(height: 40.h), // Responsive height
                       Text(
                         'Welcome to \nAndlet!',
                         style: TextStyle(
                           fontFamily: 'League Spartan',
-                          fontSize: 42,
+                          fontSize: 42.sp, // Responsive font size
                           fontWeight: FontWeight.w800,
-                          color: Color(0xFF0C356A),
+                          color: const Color(0xFF0C356A),
                         ),
                       ),
-                      SizedBox(height: 0),
+                      SizedBox(height: 10.h),
                       Text(
                         'Sign-in to access \nyour account',
                         style: TextStyle(
                           fontFamily: 'Montserrat',
-                          fontSize: 25,
+                          fontSize: 25.sp, // Responsive font size
                           fontWeight: FontWeight.w400,
-                          color: Color(0xFF0C356A),
+                          color: const Color(0xFF0C356A),
                         ),
                       ),
                     ],
@@ -146,28 +147,28 @@ class LoginViewState extends State<LoginView> {
                           }
                         },
                         child: RichText(
-                          text: const TextSpan(
+                          text: TextSpan(
                             text: 'New Member? ',
                             style: TextStyle(
                               fontFamily: 'Montserrat',
-                              fontSize: 15,
-                              color: Color(0xFF0C356A),
+                              fontSize: 15.sp, // Responsive font size
+                              color: const Color(0xFF0C356A),
                             ),
                             children: [
                               TextSpan(
                                 text: 'Register now',
                                 style: TextStyle(
                                   fontFamily: 'Montserrat',
-                                  fontSize: 15,
+                                  fontSize: 15.sp, // Responsive font size
                                   fontWeight: FontWeight.bold,
-                                  color: Color(0xFF0C356A),
+                                  color: const Color(0xFF0C356A),
                                 ),
                               ),
                             ],
                           ),
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      SizedBox(height: 10.h),
                       // Google Sign-up Button
                       ElevatedButton.icon(
                         onPressed: () async {
@@ -178,69 +179,69 @@ class LoginViewState extends State<LoginView> {
                                 const GoogleSignupRequested());
                           }
                         },
-                        icon: Image.asset('lib/assets/google.png', height: 20),
-                        label: const Text(
+                        icon: Image.asset('lib/assets/google.png', height: 20.h), // Responsive icon size
+                        label: Text(
                           'Sign up with Google',
                           style: TextStyle(
                             fontFamily: 'Montserrat',
-                            fontSize: 18,
+                            fontSize: 18.sp, // Responsive font size
                             color: Colors.black,
                           ),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 15, horizontal: 40),
+                          padding: EdgeInsets.symmetric(
+                              vertical: 15.h, horizontal: 40.w), // Responsive padding
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
+                            borderRadius: BorderRadius.circular(30.r), // Responsive border radius
                           ),
                           elevation: 5,
                         ),
                       ),
-                      const SizedBox(height: 30),
+                      SizedBox(height: 30.h),
                       // Divider with 'Or log in with Email'
-                      const Row(
+                      Row(
                         children: [
-                          Expanded(child: Divider(color: Color(0xFF0C356A))),
+                          const Expanded(child: Divider(color: Color(0xFF0C356A))),
                           Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 10),
+                            padding: EdgeInsets.symmetric(horizontal: 10.w),
                             child: Text(
                               'Or log in with Email',
                               style: TextStyle(
                                   fontFamily: 'Montserrat',
-                                  fontSize: 15,
-                                  color: Color(0xFF0C356A)),
+                                  fontSize: 15.sp, // Responsive font size
+                                  color: const Color(0xFF0C356A)),
                             ),
                           ),
-                          Expanded(child: Divider(color: Color(0xFF0C356A))),
+                          const Expanded(child: Divider(color: Color(0xFF0C356A))),
                         ],
                       ),
-                      const SizedBox(height: 10),
+                      SizedBox(height: 10.h),
                       // Google Log-in Button
                       ElevatedButton.icon(
                         onPressed: () {
                           _logger.info('Attempting Google Login');
                           BlocProvider.of<AuthBloc>(context).add(const GoogleLoginRequested());
                         },
-                        icon: Image.asset('lib/assets/google.png', height: 20),
-                        label: const Text(
+                        icon: Image.asset('lib/assets/google.png', height: 20.h), // Responsive icon size
+                        label: Text(
                           'Log in with Google',
                           style: TextStyle(
                             fontFamily: 'Montserrat',
-                            fontSize: 18,
+                            fontSize: 18.sp, // Responsive font size
                             color: Colors.black,
                           ),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 40),
+                          padding: EdgeInsets.symmetric(vertical: 15.h, horizontal: 40.w), // Responsive padding
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
+                            borderRadius: BorderRadius.circular(30.r), // Responsive border radius
                           ),
                           elevation: 5,
                         ),
                       ),
-                      const SizedBox(height: 5),
+                      SizedBox(height: 5.h),
                       // Remember me checkbox
                       Row(
                         mainAxisAlignment: MainAxisAlignment.start,
@@ -255,12 +256,12 @@ class LoginViewState extends State<LoginView> {
                             activeColor: const Color(
                                 0xFF0C356A), // Set fill color when checked
                           ),
-                          const Text(
+                          Text(
                             'Remember me',
                             style: TextStyle(
                               fontFamily: 'Montserrat',
-                              fontSize: 16,
-                              color: Color(0xFF0C356A),
+                              fontSize: 16.sp, // Responsive font size
+                              color: const Color(0xFF0C356A),
                             ),
                           ),
                         ],
@@ -270,32 +271,32 @@ class LoginViewState extends State<LoginView> {
                 ),
                 // Align the dots at the left-bottom side
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 40, left: 10),
+                  padding: EdgeInsets.only(bottom: 40.h, left: 10.w), // Responsive padding
                   child: Align(
                     alignment: Alignment.bottomLeft,
                     child: Row(
                       children: [
                         Container(
-                          width: 10,
-                          height: 10,
+                          width: 10.w, // Responsive size
+                          height: 10.h, // Responsive size
                           decoration: const BoxDecoration(
                             color: Color(0xFFF9A826),
                             shape: BoxShape.circle,
                           ),
                         ),
-                        const SizedBox(width: 5),
+                        SizedBox(width: 5.w),
                         Container(
-                          width: 10,
-                          height: 10,
+                          width: 10.w,
+                          height: 10.h,
                           decoration: const BoxDecoration(
                             color: Color(0xFF0C356A),
                             shape: BoxShape.circle,
                           ),
                         ),
-                        const SizedBox(width: 5),
+                        SizedBox(width: 5.w),
                         Container(
-                          width: 10,
-                          height: 10,
+                          width: 10.w,
+                          height: 10.h,
                           decoration: const BoxDecoration(
                             color: Color(0xFFF9A826),
                             shape: BoxShape.circle,
