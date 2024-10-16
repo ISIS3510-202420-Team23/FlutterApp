@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // For formatting dates
+import 'package:flutter_screenutil/flutter_screenutil.dart'; // For responsive design
 
 class FilterModal extends StatefulWidget {
   final double? initialPrice;
@@ -65,9 +66,9 @@ class FilterModalState extends State<FilterModal> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 15),
+      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 15.h), // Responsive padding
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: MainAxisSize.min, // Adjusts based on content
         children: [
           // Row with 'Close' and 'Apply' buttons
           Row(
@@ -83,16 +84,16 @@ class FilterModalState extends State<FilterModal> {
                 onPressed: _applyFilters, // Call apply filters method
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0C356A), // Set blue background color
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15), // Add some padding for better appearance
+                  padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h), // Add some responsive padding
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30), // Rounded corners
+                    borderRadius: BorderRadius.circular(30.r), // Rounded corners
                   ),
                 ),
-                child: const Text(
+                child: Text(
                   'Apply',
                   style: TextStyle(
                     fontFamily: 'Montserrat',
-                    fontSize: 15,
+                    fontSize: 15.sp, // Responsive font size
                     color: Colors.white, // Set white text color
                     fontWeight: FontWeight.w600, // Make the text bold
                   ),
@@ -100,7 +101,7 @@ class FilterModalState extends State<FilterModal> {
               ),
             ],
           ),
-          const SizedBox(height: 25),
+          SizedBox(height: 25.h), // Responsive spacing
           // Date Selection Row (Add dates)
           GestureDetector(
             onTap: () {
@@ -108,18 +109,18 @@ class FilterModalState extends State<FilterModal> {
                 showDateFields = !showDateFields;
               });
             },
-            child: const Row(
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('When?',
                     style: TextStyle(
-                        fontSize: 25,
+                        fontSize: 25.sp, // Responsive font size
                         fontFamily: 'League Spartan',
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF0C356A))),
+                        color: const Color(0xFF0C356A))),
                 Text('Add dates',
                     style: TextStyle(
-                        color: Color(0xFF0C356A), fontWeight: FontWeight.w500)),
+                        color: const Color(0xFF0C356A), fontWeight: FontWeight.w500, fontSize: 14.sp)), // Responsive font size
               ],
             ),
           ),
@@ -132,34 +133,36 @@ class FilterModalState extends State<FilterModal> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('From',
+                      Text('From',
                           style: TextStyle(
-                              fontSize: 18,
+                              fontSize: 18.sp, // Responsive font size
                               fontFamily: 'Monserrat',
                               fontWeight: FontWeight.w500)),
                       Text(
                         selectedDateRange != null
                             ? DateFormat('dd/MM/yyyy').format(selectedDateRange!.start)
                             : 'Select date',
+                        style: TextStyle(fontSize: 14.sp), // Responsive font size
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: 10.h), // Responsive spacing
                 GestureDetector(
                   onTap: _pickDateRange,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('To',
+                      Text('To',
                           style: TextStyle(
-                              fontSize: 18,
+                              fontSize: 18.sp, // Responsive font size
                               fontFamily: 'Monserrat',
                               fontWeight: FontWeight.w500)),
                       Text(
                         selectedDateRange != null
                             ? DateFormat('dd/MM/yyyy').format(selectedDateRange!.end)
                             : 'Select date',
+                        style: TextStyle(fontSize: 14.sp), // Responsive font size
                       ),
                     ],
                   ),
@@ -174,16 +177,16 @@ class FilterModalState extends State<FilterModal> {
                 showPriceSlider = !showPriceSlider;
               });
             },
-            child: const Row(
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('Price',
                     style: TextStyle(
-                        fontSize: 25,
+                        fontSize: 25.sp, // Responsive font size
                         fontFamily: 'League Spartan',
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF0C356A))),
-                Text('Select price'),
+                        color: const Color(0xFF0C356A))),
+                Text('Select price', style: TextStyle(fontSize: 14.sp)), // Responsive font size
               ],
             ),
           ),
@@ -202,10 +205,9 @@ class FilterModalState extends State<FilterModal> {
                     });
                   },
                 ),
-                Text('\$${selectedPrice.toInt()}'),
+                Text('\$${selectedPrice.toInt()}', style: TextStyle(fontSize: 16.sp)), // Responsive font size
               ],
             ),
-          // Slideable Minutes from Campus Field
           const Divider(),
           // Slideable Minutes from Campus Field
           GestureDetector(
@@ -214,20 +216,19 @@ class FilterModalState extends State<FilterModal> {
                 showMinutesSlider = !showMinutesSlider;
               });
             },
-            child: const Row(
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('Minutes from campus',
                     style: TextStyle(
-                        fontSize: 25,
+                        fontSize: 25.sp, // Responsive font size
                         fontFamily: 'League Spartan',
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF0C356A))),
-                Text('Select minutes'),
+                        color: const Color(0xFF0C356A))),
+                Text('Select minutes', style: TextStyle(fontSize: 14.sp)), // Responsive font size
               ],
             ),
           ),
-          const Divider(),
           if (showMinutesSlider)
             Column(
               children: [
@@ -243,7 +244,7 @@ class FilterModalState extends State<FilterModal> {
                     });
                   },
                 ),
-                Text('${selectedMinutes.toInt()} mins'),
+                Text('${selectedMinutes.toInt()} mins', style: TextStyle(fontSize: 16.sp)), // Responsive font size
                 const Divider(),
               ],
             ),

@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
-import 'package:url_launcher/url_launcher.dart'; // Import the url_launcher package
-import 'package:andlet/view/property_details/views/custom_bottom_nav_bar.dart';
-import 'package:andlet/view_models/user_action_view_model.dart';
-import 'package:url_launcher/url_launcher_string.dart';
-import '../../../analytics/analytics_engine.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class PropertyDetailView extends StatefulWidget {
   final String title;
@@ -72,11 +69,11 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                               );
                             }).toList()
                                 : [
-                              const Center(
+                              Center(
                                 child: Text(
                                   'No images available',
                                   style: TextStyle(
-                                    fontSize: 18,
+                                    fontSize: 18.sp, // Responsive font size
                                     fontWeight: FontWeight.bold,
                                     color: Colors.black,
                                   ),
@@ -84,7 +81,7 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                               )
                             ], // Fallback when the image list is empty
                             options: CarouselOptions(
-                              height: 400.0,
+                              height: 400.h, // Responsive height
                               viewportFraction: 1.0,
                               enableInfiniteScroll: false,
                               autoPlay: true,
@@ -99,7 +96,7 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                             ),
                           ),
                           Positioned(
-                            bottom: 15,
+                            bottom: 15.h, // Responsive positioning
                             left: 0,
                             right: 0,
                             child: Row(
@@ -110,10 +107,10 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                                   .map((entry) {
                                 return GestureDetector(
                                   child: Container(
-                                    width: 10.0,
-                                    height: 10.0,
-                                    margin: const EdgeInsets.symmetric(
-                                        horizontal: 4.0),
+                                    width: 10.w, // Responsive width
+                                    height: 10.h, // Responsive height
+                                    margin: EdgeInsets.symmetric(
+                                        horizontal: 4.w), // Responsive margin
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
                                       color: _currentPage == entry.key
@@ -128,48 +125,48 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                         ],
                       ),
                       Padding(
-                        padding: const EdgeInsets.all(20.0),
+                        padding: EdgeInsets.all(20.w), // Responsive padding
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const SizedBox(height: 10),
+                            SizedBox(height: 10.h), // Responsive spacing
                             Text(
                               widget.title,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'League Spartan',
-                                fontSize: 26,
+                                fontSize: 26.sp, // Responsive font size
                                 fontWeight: FontWeight.w600,
                                 color: Colors.black,
                               ),
                             ),
-                            const SizedBox(height: 10),
+                            SizedBox(height: 10.h), // Responsive spacing
                             Row(
                               children: [
                                 const Icon(Icons.location_on_outlined,
                                     size: 20, color: Colors.black),
-                                const SizedBox(width: 5),
+                                SizedBox(width: 5.w), // Responsive spacing
                                 Text(
                                   widget.address,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontFamily: 'League Spartan',
                                     fontWeight: FontWeight.w300,
-                                    fontSize: 19,
+                                    fontSize: 19.sp, // Responsive font size
                                     color: Colors.black,
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 20),
-                            const Text(
+                            SizedBox(height: 20.h), // Responsive spacing
+                            Text(
                               'Facilities',
                               style: TextStyle(
                                 fontFamily: 'League Spartan',
                                 fontWeight: FontWeight.w600,
-                                fontSize: 21,
+                                fontSize: 21.sp, // Responsive font size
                                 color: Colors.black,
                               ),
                             ),
-                            const SizedBox(height: 5),
+                            SizedBox(height: 5.h), // Responsive spacing
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               children: [
@@ -181,29 +178,29 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                                     '${widget.roommates} Roommates'),
                               ],
                             ),
-                            const SizedBox(height: 20),
-                            const Text(
+                            SizedBox(height: 20.h), // Responsive spacing
+                            Text(
                               'Description',
                               style: TextStyle(
                                 fontFamily: 'League Spartan',
-                                fontSize: 21,
+                                fontSize: 21.sp, // Responsive font size
                                 fontWeight: FontWeight.w600,
                                 color: Colors.black,
                               ),
                             ),
-                            const SizedBox(height: 5),
+                            SizedBox(height: 5.h), // Responsive spacing
                             Text(
                               widget.description?.isNotEmpty ?? false
                                   ? widget.description!
                                   : 'No description provided',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'League Spartan',
                                 fontWeight: FontWeight.w300,
-                                fontSize: 15,
+                                fontSize: 15.sp, // Responsive font size
                                 color: Colors.black,
                               ),
                             ),
-                            const SizedBox(height: 20),
+                            SizedBox(height: 20.h), // Responsive spacing
                           ],
                         ),
                       ),
@@ -211,55 +208,113 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                   ),
                 ),
               ),
-              // Custom Bottom Navbar
-              CustomBottomNavbar(
-                agentName: widget.agentName,
-                agentPhoto: widget.agentPhoto,
-                agentEmail: widget.agentEmail,
-                price: widget.price,
-                onContactPressed: () {
-                  AnalyticsEngine.logContactButtonPressed();
-                  UserActionsViewModel().addUserAction(
-                    widget.userEmail,
-                    'contact',
-                  );
-                  setState(() {
-                    showContactDetails = !showContactDetails;
-                  });
-                },
+              // Custom Bottom Navbar with improvements to handle long names
+              Container(
+                padding: EdgeInsets.all(12.w), // Add padding around the row
+                color: const Color(0xFFF9EFD7), // Set background to yellow
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          backgroundImage: widget.agentPhoto.isNotEmpty
+                              ? NetworkImage(widget.agentPhoto)
+                              : const AssetImage('lib/assets/personaicono.png')
+                          as ImageProvider,
+                          radius: 25.r, // Responsive avatar size
+                        ),
+                        SizedBox(width: 10.w), // Space between avatar and text
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.agentName,
+                              style: TextStyle(
+                                fontFamily: 'Montserrat',
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15.sp, // Responsive font size
+                                color: const Color(0xFF0C356A),
+                              ),
+                              overflow: TextOverflow.ellipsis, // Avoid overflow
+                              maxLines: 1, // Limit to one line
+                            ),
+                            Text(
+                              'Property agent',
+                              style: TextStyle(
+                                fontFamily: 'League Spartan',
+                                fontSize: 15.sp, // Responsive font size
+                                fontWeight: FontWeight.w500,
+                                color: Colors.black54,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    // The contact button aligned to the right
+                    Padding(
+                      padding: EdgeInsets.only(right: 15.w),
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0C356A),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30.r),
+                          ),
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            showContactDetails = !showContactDetails;
+                          });
+                        },
+                        child: Text(
+                          'Contact',
+                          style: TextStyle(fontSize: 16.sp, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
               if (showContactDetails)
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
                   color: const Color(0xFFF9EFD7), // Light yellow background
-                  width: MediaQuery.of(context).size.width, // Ensures it stretches across the screen width
-                  padding: const EdgeInsets.all(10.0),
-                  child: Center(
-                    child: GestureDetector(
-                      onTap: () => _openEmailClient(
-                        widget.agentEmail, // Email address of the agent
-                        widget.title, // Property title
-                        widget.agentName, // Name of the agent
-                      ),
-                      child: Text(
-                        'Email: ${widget.agentEmail}',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontFamily: 'League Spartan',
-                          fontWeight: FontWeight.w600,
-                          fontSize: 18,
-                          color: Color(0xFF0C356A),
-                          decoration: TextDecoration.underline,
+                  width: MediaQuery.of(context).size.width, // Ensure full width
+                  padding: EdgeInsets.all(10.w), // Responsive padding
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min, // Ensures the column doesn't take infinite height
+                    children: [
+                      // Displaying only the email, without the extra 'Contact Agent' button
+                      SizedBox(
+                        width: MediaQuery.of(context).size.width * 0.9, // Set the width relative to screen
+                        child: GestureDetector(
+                          onTap: () => _openEmailClient(
+                            widget.agentEmail, // Email address of the agent
+                            widget.title, // Property title
+                            widget.agentName, // Agent name
+                          ),
+                          child: Text(
+                            'Email: ${widget.agentEmail}',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontFamily: 'League Spartan',
+                              fontWeight: FontWeight.w600,
+                              fontSize: 18.sp, // Responsive font size
+                              color: const Color(0xFF0C356A),
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ),
                 ),
             ],
           ),
           Positioned(
-            top: 50,
-            left: 20,
+            top: 50.h, // Responsive positioning
+            left: 20.w, // Responsive positioning
             child: CircleAvatar(
               backgroundColor: const Color(0xFF0C356A),
               child: IconButton(
@@ -278,22 +333,22 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
   // Helper method for building facility widgets
   Widget _buildFacilityWidget(IconData icon, String label) {
     return Container(
-      width: 110.0,
-      padding: const EdgeInsets.all(10.0),
+      width: 110.w, // Responsive width
+      padding: EdgeInsets.all(10.w), // Responsive padding
       decoration: BoxDecoration(
         border: Border.all(color: Colors.black26),
-        borderRadius: BorderRadius.circular(8.0),
+        borderRadius: BorderRadius.circular(8.r), // Responsive border radius
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 24, color: Colors.black),
-          const SizedBox(height: 8),
+          Icon(icon, size: 24.r, color: Colors.black), // Responsive icon size
+          SizedBox(height: 8.h), // Responsive spacing
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: 'League Spartan',
-              fontSize: 14,
+              fontSize: 14.sp, // Responsive font size
               fontWeight: FontWeight.w500,
               color: Colors.black,
             ),
@@ -304,9 +359,11 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
   }
 
   // Helper method to open the email client
-  Future<void> _openEmailClient(String email, String propertyTitle, String userName) async {
+  Future<void> _openEmailClient(
+      String email, String propertyTitle, String agentName) async {
     final String subject = "Interested in $propertyTitle property";
-    final String body = "Hello $userName,\n\nI would like to know more about the availability of the offer $propertyTitle that you published on Andlet";
+    final String body =
+        "Hello $agentName,\n\nI would like to know more about the availability of the offer $propertyTitle that you published on Andlet.";
 
     final String encodedSubject = Uri.encodeComponent(subject);
     final String encodedBody = Uri.encodeComponent(body);
@@ -317,7 +374,7 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
       query: 'subject=$encodedSubject&body=$encodedBody',
     );
 
-    final BuildContext currentContext = context;  // Save context before async call
+    final BuildContext currentContext = context; // Save context before async call
 
     try {
       if (await canLaunchUrl(emailUri)) {
@@ -331,7 +388,4 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
       );
     }
   }
-
-
-
 }
