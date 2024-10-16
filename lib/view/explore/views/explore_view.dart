@@ -1,6 +1,7 @@
 import 'package:andlet/analytics/analytics_engine.dart';
 import 'package:andlet/view_models/user_action_view_model.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart'; // Added for responsiveness
 import 'package:provider/provider.dart';
 import '../../../cas/user_lastContact_landloard.dart';
 import '../../../view_models/offer_view_model.dart';
@@ -8,7 +9,6 @@ import '../../../view_models/property_view_model.dart';
 import '../../../view_models/user_view_model.dart'; // Import UserViewModel
 import 'filter_modal.dart';
 import 'property_card.dart';
-
 import 'package:andlet/view/property_details/views/property_detail_view.dart';
 
 class ExploreView extends StatefulWidget {
@@ -56,8 +56,8 @@ class _ExploreViewState extends State<ExploreView> {
   Future<void> fetchUserPreferences() async {
     try {
       var userPreferences =
-          await Provider.of<OfferViewModel>(context, listen: false)
-              .fetchUserRoommatePreferences(widget.userEmail);
+      await Provider.of<OfferViewModel>(context, listen: false)
+          .fetchUserRoommatePreferences(widget.userEmail);
       setState(() {
         userRoommatePreference =
             userPreferences; // true for prefers roommates, false for no roommates
@@ -100,40 +100,39 @@ class _ExploreViewState extends State<ExploreView> {
   Widget build(BuildContext context) {
     final offerViewModel = Provider.of<OfferViewModel>(context);
     final propertyViewModel = Provider.of<PropertyViewModel>(context);
-    final userViewModel = Provider.of<UserViewModel>(
-        context); // Use UserViewModel to fetch agent data
+    final userViewModel = Provider.of<UserViewModel>(context);
     String firstName = widget.displayName.split(' ').first;
     final sortedOffers = _sortOffers(offerViewModel.offersWithProperties);
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: Padding(
-        padding: const EdgeInsets.all(25.0),
+        padding: EdgeInsets.all(25.w), // Responsive padding
         child: Column(
           children: [
-            const SizedBox(height: 25),
+            SizedBox(height: 25.h), // Responsive height
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Welcome,',
                       style: TextStyle(
                         fontFamily: 'League Spartan',
-                        fontSize: 40,
+                        fontSize: 35.sp, // Responsive font size
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFF0C356A),
+                        color: const Color(0xFF0C356A),
                       ),
                     ),
                     Text(
                       firstName,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'League Spartan',
-                        fontSize: 40,
+                        fontSize: 35.sp, // Responsive font size
                         fontWeight: FontWeight.w600,
-                        color: Color(0xFFF9A826),
+                        color: const Color(0xFFF9A826),
                       ),
                     ),
                   ],
@@ -141,13 +140,13 @@ class _ExploreViewState extends State<ExploreView> {
                 CircleAvatar(
                   backgroundImage: widget.photoUrl.isNotEmpty
                       ? NetworkImage(widget.photoUrl)
-                      : const AssetImage('lib/assets/personaicono.jpg')
-                          as ImageProvider,
-                  radius: 30,
+                      : const AssetImage('lib/assets/personaicono.png')
+                  as ImageProvider,
+                  radius: 35.r, // Responsive radius
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20.h), // Responsive height
             GestureDetector(
               onTap: () {
                 AnalyticsEngine
@@ -157,9 +156,10 @@ class _ExploreViewState extends State<ExploreView> {
                 showModalBottomSheet(
                   context: context,
                   isScrollControlled: true,
-                  shape: const RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.vertical(top: Radius.circular(20)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(20.r), // Responsive border radius
+                    ),
                   ),
                   builder: (context) => SizedBox(
                     height: MediaQuery.of(context).size.height * 0.9,
@@ -175,24 +175,24 @@ class _ExploreViewState extends State<ExploreView> {
                 );
               },
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                padding: EdgeInsets.symmetric(
+                    horizontal: 15.w, vertical: 10.h), // Responsive padding
                 decoration: BoxDecoration(
                   color: const Color(0xFFB5D5FF),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(10.r), // Responsive border radius
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.1),
-                      blurRadius: 10,
-                      spreadRadius: 2,
+                      blurRadius: 10.r,
+                      spreadRadius: 2.r,
                     ),
                   ],
                 ),
-                child: const Row(
+                child: Row(
                   children: [
-                    Icon(Icons.search, color: Color(0xFF0C356A)),
-                    SizedBox(width: 10),
-                    Text(
+                    const Icon(Icons.search, color: Color(0xFF0C356A)),
+                    SizedBox(width: 10.w), // Responsive spacing
+                    const Text(
                       'Search for a place...',
                       style: TextStyle(color: Color(0xFF0C356A)),
                     ),
@@ -200,14 +200,14 @@ class _ExploreViewState extends State<ExploreView> {
                 ),
               ),
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: 10.h), // Responsive spacing
             offerViewModel.isLoading || propertyViewModel.isLoading
                 ? const Expanded(
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        color: Color(0xFF0C356A),
-                      ),
-                    ),
+              child: Center(
+                child: CircularProgressIndicator(
+                  color: Color(0xFF0C356A),
+                ),
+              ),
             ) : sortedOffers.isEmpty
                 ? const Expanded(
               child: Center(
@@ -222,113 +222,99 @@ class _ExploreViewState extends State<ExploreView> {
               ),
             )
                 : Expanded(
-                    child: ListView.builder(
-                      itemCount:
-                          _sortOffers(offerViewModel.offersWithProperties)
-                              .length,
-                      itemBuilder: (context, index) {
-                        final offerWithProperty = _sortOffers(
-                            offerViewModel.offersWithProperties)[index];
-                        final offer = offerWithProperty.offer;
-                        final property = offerWithProperty.property;
+              child: ListView.builder(
+                itemCount:
+                _sortOffers(offerViewModel.offersWithProperties)
+                    .length,
+                itemBuilder: (context, index) {
+                  final offerWithProperty = _sortOffers(
+                      offerViewModel.offersWithProperties)[index];
+                  final offer = offerWithProperty.offer;
+                  final property = offerWithProperty.property;
 
-                        return FutureBuilder<List<String>>(
-                          future:
-                              propertyViewModel.getImageUrls(property.photos),
-                          builder: (context, imageSnapshot) {
-                            if (imageSnapshot.connectionState ==
-                                ConnectionState.waiting) {
-                              return const Center(
-                                  child: CircularProgressIndicator());
-                            } else if (imageSnapshot.hasError) {
-                              return const Center(
-                                  child: Text('Error loading images'));
-                            }
+                  return FutureBuilder<List<String>>(
+                    future: propertyViewModel.getImageUrls(property.photos),
+                    builder: (context, imageSnapshot) {
+                      if (imageSnapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(
+                            child: CircularProgressIndicator());
+                      } else if (imageSnapshot.hasError) {
+                        return const Center(
+                            child: Text('Error loading images'));
+                      }
 
-                            final imageUrls = imageSnapshot.data ?? [];
+                      final imageUrls = imageSnapshot.data ?? [];
 
-                            return FutureBuilder<Map<String, dynamic>>(
-                              future: userViewModel.fetchUserById(offer
-                                  .user_id), // Fetch the user (agent) by user_id
-                              builder: (context, agentSnapshot) {
-                                if (agentSnapshot.connectionState ==
-                                    ConnectionState.waiting) {
-                                  return const Center(
-                                      child: CircularProgressIndicator());
-                                } else if (agentSnapshot.hasError ||
-                                    !agentSnapshot.hasData) {
-                                  return const Center(
-                                      child: Text('Error loading agent data'));
-                                }
+                      return FutureBuilder<Map<String, dynamic>>(
+                        future: userViewModel.fetchUserById(offer.user_id),
+                        builder: (context, agentSnapshot) {
+                          if (agentSnapshot.connectionState == ConnectionState.waiting) {
+                            return const Center(
+                                child: CircularProgressIndicator());
+                          } else if (agentSnapshot.hasError || !agentSnapshot.hasData) {
+                            return const Center(
+                                child: Text('Error loading agent data'));
+                          }
 
-                                final agentData = agentSnapshot.data!;
-                                final agentName = agentData['name'];
-                                final agentPhoto = agentData['photo'];
-                                final agentEmail = agentData['email'];
+                          final agentData = agentSnapshot.data!;
+                          final agentName = agentData['name'];
+                          final agentPhoto = agentData['photo'];
+                          final agentEmail = agentData['email'];
 
-                                return Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 5),
-                                  child: GestureDetector(
-                                    onTap: () async {
-                                      // Increment the view counter
-                                      bool hasRoommates = offer.roommates > 0;
-                                      await Provider.of<OfferViewModel>(context,
-                                              listen: false)
-                                          .incrementUserViewCounter(
-                                              widget.userEmail, hasRoommates);
+                          return Padding(
+                            padding: EdgeInsets.symmetric(vertical: 5.h),
+                            child: GestureDetector(
+                              onTap: () async {
+                                // Increment the view counter
+                                bool hasRoommates = offer.roommates > 0;
+                                await Provider.of<OfferViewModel>(context,
+                                    listen: false)
+                                    .incrementUserViewCounter(
+                                    widget.userEmail, hasRoommates);
 
-                                      AnalyticsEngine.logViewPropertyDetails(
-                                          property
-                                              .id); // Log view property details event
-                                      OfferViewModel()
-                                          .incrementOfferViewCounter(offer
-                                              .offerId); // Log view property details event
+                                AnalyticsEngine.logViewPropertyDetails(
+                                    property.id);
+                                OfferViewModel().incrementOfferViewCounter(offer.offerId);
 
-                                      // Navigate to property details with agent info
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              PropertyDetailView(
-                                            title: property.title,
-                                            address: property.address,
-                                            imageUrls: imageUrls,
-                                            rooms: offer.num_rooms.toString(),
-                                            bathrooms:
-                                                offer.num_baths.toString(),
-                                            roommates:
-                                                offer.roommates.toString(),
-                                            description: property.description,
-                                            agentName: agentName,
-                                            agentEmail: agentEmail,
-                                            agentPhoto: agentPhoto,
-                                            price: offer.price_per_month
-                                                .toString(),
-                                            userEmail: widget.userEmail,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                    child: PropertyCard(
-                                      imageUrls:
-                                          imageUrls, // Image URLs fetched from the property
+                                // Navigate to property details with agent info
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => PropertyDetailView(
                                       title: property.title,
                                       address: property.address,
+                                      imageUrls: imageUrls,
                                       rooms: offer.num_rooms.toString(),
-                                      baths: offer.num_baths.toString(),
+                                      bathrooms: offer.num_baths.toString(),
                                       roommates: offer.roommates.toString(),
+                                      description: property.description,
+                                      agentName: agentName,
+                                      agentEmail: agentEmail,
+                                      agentPhoto: agentPhoto,
                                       price: offer.price_per_month.toString(),
+                                      userEmail: widget.userEmail,
                                     ),
                                   ),
                                 );
                               },
-                            );
-                          },
-                        );
-                      },
-                    ),
-                  ),
+                              child: PropertyCard(
+                                imageUrls: imageUrls,
+                                title: property.title,
+                                address: property.address,
+                                rooms: offer.num_rooms.toString(),
+                                baths: offer.num_baths.toString(),
+                                roommates: offer.roommates.toString(),
+                                price: offer.price_per_month.toString(),
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
           ],
         ),
       ),

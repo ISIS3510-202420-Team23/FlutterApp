@@ -10,6 +10,7 @@ import 'package:logging/logging.dart';
 import 'package:logging_to_logcat/logging_to_logcat.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart'; // Added for responsiveness
 import 'view/auth/bloc/auth_bloc.dart';
 import 'view_models/property_view_model.dart';
 import 'view_models/user_view_model.dart';
@@ -59,26 +60,31 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        // Include PropertyViewModel as a ChangeNotifierProvider
-        ChangeNotifierProvider(create: (_) => PropertyViewModel()),
-        ChangeNotifierProvider(create: (_) => OfferViewModel()),
-        ChangeNotifierProvider(create: (_) => UserViewModel()),
-      ],
-      child: MultiBlocProvider(
-        providers: [
-          // Existing AuthBloc
-          BlocProvider<AuthBloc>(create: (context) => AuthBloc()),
-        ],
-        child: MaterialApp(
-          title: 'Andlet App',
-          theme: ThemeData(
-            primarySwatch: Colors.blue,
+    return ScreenUtilInit(
+      designSize: const Size(375, 812), // Define your base screen size
+      builder: (context, child) {
+        return MultiProvider(
+          providers: [
+            // Include PropertyViewModel as a ChangeNotifierProvider
+            ChangeNotifierProvider(create: (_) => PropertyViewModel()),
+            ChangeNotifierProvider(create: (_) => OfferViewModel()),
+            ChangeNotifierProvider(create: (_) => UserViewModel()),
+          ],
+          child: MultiBlocProvider(
+            providers: [
+              // Existing AuthBloc
+              BlocProvider<AuthBloc>(create: (context) => AuthBloc()),
+            ],
+            child: MaterialApp(
+              title: 'Andlet App',
+              theme: ThemeData(
+                primarySwatch: Colors.blue,
+              ),
+              home: const WelcomePage(),
+            ),
           ),
-          home: const WelcomePage(),
-        ),
-      ),
+        );
+      },
     );
   }
 }

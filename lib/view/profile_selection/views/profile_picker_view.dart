@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:andlet/view_models/user_view_model.dart'; // Import UserViewModel
 import 'package:andlet/models/entities/user.dart'; // Import User model
+import 'package:flutter_screenutil/flutter_screenutil.dart'; // Added for responsiveness
 
 class ProfilePickerView extends StatelessWidget {
   final String displayName; // Google displayName
@@ -16,8 +17,6 @@ class ProfilePickerView extends StatelessWidget {
     required this.userEmail,
     required this.photoUrl,
   });
-
-
 
   /// Save the user's selected profile type (tenant or landlord) locally.
   Future<void> _setUserProfileType(String profileType) async {
@@ -64,42 +63,41 @@ class ProfilePickerView extends StatelessWidget {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFB5D5FF), // Light blue background
       body: Padding(
-        padding: const EdgeInsets.all(30.0), // Add padding around the content
+        padding: EdgeInsets.all(30.w), // Responsive padding
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center, // Align text to the center
           children: [
-            const SizedBox(height: 40), // Add some space from the top
-            const Align(
+            SizedBox(height: 40.h), // Responsive height
+            Align(
               alignment: Alignment.centerLeft, // Keep "Let's start" aligned left
               child: Text(
                 "Let's start!\nFirst...",
                 style: TextStyle(
                   fontFamily: 'League Spartan',
-                  fontSize: 40,
+                  fontSize: 40.sp, // Responsive font size
                   fontWeight: FontWeight.w800,
-                  color: Color(0xFF0C356A),
+                  color: const Color(0xFF0C356A),
                 ),
               ),
             ),
-            const SizedBox(height: 150), // Add some space before the buttons
-            const Center(
+            SizedBox(height: 150.h), // Responsive height before the buttons
+            Center(
               child: Text(
                 "What are you looking for?",
                 textAlign: TextAlign.center, // Center the text horizontally
                 style: TextStyle(
                   fontFamily: 'Montserrat',
-                  fontSize: 20,
-                  color: Color(0xFF0C356A),
+                  fontSize: 20.sp, // Responsive font size
+                  color: const Color(0xFF0C356A),
                 ),
               ),
             ),
-            const SizedBox(height: 30),
+            SizedBox(height: 30.h), // Responsive height
             Center(
               child: Column(
                 children: [
@@ -109,40 +107,40 @@ class ProfilePickerView extends StatelessWidget {
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFFFB900),
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 15, horizontal: 60),
+                      padding: EdgeInsets.symmetric(
+                          vertical: 15.h, horizontal: 60.w), // Responsive padding
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
+                        borderRadius: BorderRadius.circular(30.r), // Responsive border radius
                       ),
                     ),
-                    child: const Text(
+                    child: Text(
                       'I want to rent a place!',
                       style: TextStyle(
                         fontFamily: 'Montserrat',
-                        fontSize: 18,
+                        fontSize: 18.sp, // Responsive font size
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20.h), // Responsive spacing
                   ElevatedButton(
                     onPressed: () {
                       _navigateAndSaveUser(context, 'landlord'); // Save landlord profile type and navigate
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF0C356A),
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 15, horizontal: 60),
+                      padding: EdgeInsets.symmetric(
+                          vertical: 15.h, horizontal: 60.w), // Responsive padding
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
+                        borderRadius: BorderRadius.circular(30.r), // Responsive border radius
                       ),
                     ),
-                    child: const Text(
+                    child: Text(
                       'I want to list my place!',
                       style: TextStyle(
                         fontFamily: 'Montserrat',
-                        fontSize: 18,
+                        fontSize: 18.sp, // Responsive font size
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
                       ),
@@ -154,32 +152,32 @@ class ProfilePickerView extends StatelessWidget {
             const Spacer(),
             // Align the dots at the left-bottom side
             Padding(
-              padding: const EdgeInsets.only(bottom: 40, left: 10),
+              padding: EdgeInsets.only(bottom: 40.h, left: 10.w), // Responsive padding
               child: Align(
                 alignment: Alignment.bottomLeft,
                 child: Row(
                   children: [
                     Container(
-                      width: 10,
-                      height: 10,
+                      width: 10.w, // Responsive size
+                      height: 10.h, // Responsive size
                       decoration: const BoxDecoration(
                         color: Color(0xFFF9A826),
                         shape: BoxShape.circle,
                       ),
                     ),
-                    const SizedBox(width: 5),
+                    SizedBox(width: 5.w),
                     Container(
-                      width: 10,
-                      height: 10,
+                      width: 10.w,
+                      height: 10.h,
                       decoration: const BoxDecoration(
                         color: Color(0xFFF9A826),
                         shape: BoxShape.circle,
                       ),
                     ),
-                    const SizedBox(width: 5),
+                    SizedBox(width: 5.w),
                     Container(
-                      width: 10,
-                      height: 10,
+                      width: 10.w,
+                      height: 10.h,
                       decoration: const BoxDecoration(
                         color: Color(0xFF0C356A),
                         shape: BoxShape.circle,
