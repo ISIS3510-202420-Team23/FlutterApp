@@ -9,6 +9,7 @@ import '../../../view_models/property_view_model.dart';
 import '../../../view_models/user_view_model.dart'; // Import UserViewModel
 import 'filter_modal.dart';
 import 'property_card.dart';
+import 'package:intl/intl.dart';
 import 'package:andlet/view/property_details/views/property_detail_view.dart';
 
 class ExploreView extends StatefulWidget {
@@ -31,6 +32,7 @@ class _ExploreViewState extends State<ExploreView> {
   int currentPageIndex = 0;
   bool showShakeAlert = false;
   bool? userRoommatePreference; // Roommate preference
+  final ScrollController _scrollController = ScrollController();
 
   // State variables to store selected filters
   double? selectedPrice;
@@ -49,7 +51,21 @@ class _ExploreViewState extends State<ExploreView> {
       fetchUserPreferences(); // Fetch user preferences
       NotificationService notificationService = NotificationService();
       notificationService.checkLastContactAction(widget.userEmail);
+      _scrollController.addListener(_onScroll); // Add scroll listener
     });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose(); // Clean up the controller when the widget is disposed
+    super.dispose();
+  }
+
+  // Handle scroll events to detect when reaching the bottom of the list
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      Provider.of<OfferViewModel>(context, listen: false).fetchOffersWithFilters();
+    }
   }
 
   // Fetch user preferences for roommates from Firestore
@@ -77,6 +93,26 @@ class _ExploreViewState extends State<ExploreView> {
 
     Provider.of<OfferViewModel>(context, listen: false).fetchOffersWithFilters(
         maxPrice: price, maxMinutes: minutes, dateRange: dateRange);
+  }
+
+  // Remove a filter and refresh offers
+  void _removeFilter(String filterType) {
+    setState(() {
+      switch (filterType) {
+        case 'price':
+          selectedPrice = null;
+          break;
+        case 'minutes':
+          selectedMinutes = null;
+          break;
+        case 'dates':
+          selectedDateRange = null;
+          break;
+      }
+    });
+
+    // Fetch offers with the updated filters
+    _applyFilters(selectedPrice, selectedMinutes, selectedDateRange);
   }
 
   // Sort offers based on roommate preference
@@ -200,6 +236,56 @@ class _ExploreViewState extends State<ExploreView> {
                 ),
               ),
             ),
+
+            // Display active filters
+            if (selectedPrice != null || selectedMinutes != null || selectedDateRange != null)
+              Padding(
+                padding: EdgeInsets.symmetric(vertical: 5.h), // Minimized vertical padding
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal, // Enable horizontal scrolling
+                  child: Row(
+                    children: [
+                      if (selectedPrice != null)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8.0), // Add some spacing between chips
+                          child: Chip(
+                            label: Text(
+                              'Price: \$${selectedPrice!.toInt()}',
+                              style: const TextStyle(color: Color(0xFF0C356A)), // Custom font color
+                            ),
+                            backgroundColor: const Color(0xFFB5D5FF), // Light blue color
+                            onDeleted: () => _removeFilter('price'), // Allow removing the price filter
+                          ),
+                        ),
+                      if (selectedMinutes != null)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8.0), // Add some spacing between chips
+                          child: Chip(
+                            label: Text(
+                              'Minutes: ${selectedMinutes!.toInt()}',
+                              style: const TextStyle(color: Color(0xFF0C356A)), // Custom font color
+                            ),
+                            backgroundColor: const Color(0xFFB5D5FF), // Light blue color
+                            onDeleted: () => _removeFilter('minutes'), // Allow removing the minutes filter
+                          ),
+                        ),
+                      if (selectedDateRange != null)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8.0), // Add some spacing between chips
+                          child: Chip(
+                            label: Text(
+                              'Dates: ${DateFormat('MM/dd').format(selectedDateRange!.start)} - ${DateFormat('MM/dd').format(selectedDateRange!.end)}',
+                              style: const TextStyle(color: Color(0xFF0C356A)), // Custom font color
+                            ),
+                            backgroundColor: const Color(0xFFB5D5FF), // Light blue color
+                            onDeleted: () => _removeFilter('dates'), // Allow removing the date range filter
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+
             SizedBox(height: 10.h), // Responsive spacing
             offerViewModel.isLoading || propertyViewModel.isLoading
                 ? const Expanded(
@@ -208,7 +294,8 @@ class _ExploreViewState extends State<ExploreView> {
                   color: Color(0xFF0C356A),
                 ),
               ),
-            ) : sortedOffers.isEmpty
+            )
+                : sortedOffers.isEmpty
                 ? const Expanded(
               child: Center(
                 child: Text(
@@ -223,9 +310,8 @@ class _ExploreViewState extends State<ExploreView> {
             )
                 : Expanded(
               child: ListView.builder(
-                itemCount:
-                _sortOffers(offerViewModel.offersWithProperties)
-                    .length,
+                controller: _scrollController, // Attach scroll controller
+                itemCount: _sortOffers(offerViewModel.offersWithProperties).length,
                 itemBuilder: (context, index) {
                   final offerWithProperty = _sortOffers(
                       offerViewModel.offersWithProperties)[index];
@@ -236,11 +322,9 @@ class _ExploreViewState extends State<ExploreView> {
                     future: propertyViewModel.getImageUrls(property.photos),
                     builder: (context, imageSnapshot) {
                       if (imageSnapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(
-                            child: CircularProgressIndicator());
+                        return const Center(child: CircularProgressIndicator());
                       } else if (imageSnapshot.hasError) {
-                        return const Center(
-                            child: Text('Error loading images'));
+                        return const Center(child: Text('Error loading images'));
                       }
 
                       final imageUrls = imageSnapshot.data ?? [];
@@ -249,11 +333,9 @@ class _ExploreViewState extends State<ExploreView> {
                         future: userViewModel.fetchUserById(offer.user_id),
                         builder: (context, agentSnapshot) {
                           if (agentSnapshot.connectionState == ConnectionState.waiting) {
-                            return const Center(
-                                child: CircularProgressIndicator());
+                            return const Center(child: CircularProgressIndicator());
                           } else if (agentSnapshot.hasError || !agentSnapshot.hasData) {
-                            return const Center(
-                                child: Text('Error loading agent data'));
+                            return const Center(child: Text('Error loading agent data'));
                           }
 
                           final agentData = agentSnapshot.data!;
@@ -267,13 +349,10 @@ class _ExploreViewState extends State<ExploreView> {
                               onTap: () async {
                                 // Increment the view counter
                                 bool hasRoommates = offer.roommates > 0;
-                                await Provider.of<OfferViewModel>(context,
-                                    listen: false)
-                                    .incrementUserViewCounter(
-                                    widget.userEmail, hasRoommates);
+                                await Provider.of<OfferViewModel>(context, listen: false)
+                                    .incrementUserViewCounter(widget.userEmail, hasRoommates);
 
-                                AnalyticsEngine.logViewPropertyDetails(
-                                    property.id);
+                                AnalyticsEngine.logViewPropertyDetails(property.id);
                                 OfferViewModel().incrementOfferViewCounter(offer.offerId);
 
                                 // Navigate to property details with agent info
