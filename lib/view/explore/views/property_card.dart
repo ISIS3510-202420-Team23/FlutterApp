@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart'; // Import for responsiveness
 import 'dart:math';
 
 class PropertyCard extends StatefulWidget {
@@ -35,9 +36,9 @@ class _PropertyCardState extends State<PropertyCard> {
     return Column(
       children: [
         ClipRRect(
-          borderRadius: BorderRadius.circular(25),
+          borderRadius: BorderRadius.circular(25.r), // Responsive corner radius
           child: SizedBox(
-            height: 200,
+            height: 200.h, // Responsive height
             width: double.infinity,
             child: widget.imageUrls.isNotEmpty
                 ? CarouselSlider.builder(
@@ -59,7 +60,7 @@ class _PropertyCardState extends State<PropertyCard> {
                 );
               },
               options: CarouselOptions(
-                height: 200.0,
+                height: 200.h, // Responsive height for carousel
                 viewportFraction: 1.0,
                 autoPlay: _isAutoPlaying,
                 autoPlayInterval: Duration(seconds: Random().nextInt(3) + 4),
@@ -91,71 +92,97 @@ class _PropertyCardState extends State<PropertyCard> {
         Card(
           color: Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
+            borderRadius: BorderRadius.circular(15.r), // Responsive border radius
           ),
-          margin: const EdgeInsets.only(top: 10, bottom: 15),
+          margin: EdgeInsets.only(top: 10.h, bottom: 15.h), // Responsive margins
           elevation: 0,
           child: Padding(
-            padding: const EdgeInsets.all(15.0),
+            padding: EdgeInsets.all(15.w), // Responsive padding
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Title with wrapping and responsiveness
                 Text(
                   widget.title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontFamily: 'League Spartan',
-                    fontSize: 18,
+                    fontSize: 18.sp, // Responsive font size
                     fontWeight: FontWeight.bold,
                   ),
+                  maxLines: 2, // Allowing max 2 lines
+                  overflow: TextOverflow.ellipsis, // Ellipsis for overflow text
                 ),
-                const SizedBox(height: 5),
+                SizedBox(height: 5.h), // Responsive spacing
                 Row(
                   children: [
-                    const Icon(Icons.location_on, size: 16, color: Colors.black),
-                    const SizedBox(width: 5),
-                    Text(
-                      widget.address,
-                      style: const TextStyle(
-                        fontFamily: 'League Spartan',
-                        fontSize: 14,
-                        color: Colors.black,
+                    Icon(Icons.location_on, size: 16.r, color: Colors.black),
+                    SizedBox(width: 5.w), // Responsive spacing
+                    Expanded(
+                      child: Text(
+                        widget.address,
+                        style: TextStyle(
+                          fontFamily: 'League Spartan',
+                          fontSize: 14.sp, // Responsive font size
+                          color: Colors.black,
+                        ),
+                        maxLines: 2, // Allowing max 2 lines for address
+                        overflow: TextOverflow.ellipsis, // Ellipsis for overflow text
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: 10.h), // Responsive spacing
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween, // Align elements between left and right
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.bed, size: 16, color: Colors.black),
-                        const SizedBox(width: 5),
-                        Text(widget.rooms, style: const TextStyle(color: Colors.black)),
+                        // Room Icon + Text
+                        Icon(Icons.bed, size: 16.r, color: Colors.black), // Responsive icon size
+                        SizedBox(width: 5.w), // Responsive spacing
+                        Text(
+                          widget.rooms,
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: 14.sp, // Responsive font size
+                          ),
+                        ),
+                        SizedBox(width: 15.w), // Adjusted spacing between icons
+                        // Bath Icon + Text
+                        Icon(Icons.bathtub, size: 16.r, color: Colors.black),
+                        SizedBox(width: 5.w),
+                        Text(
+                          widget.baths,
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: 14.sp, // Responsive font size
+                          ),
+                        ),
+                        SizedBox(width: 15.w), // Adjusted spacing between icons
+                        // Roommate Icon + Text
+                        Icon(Icons.group, size: 16.r, color: Colors.black),
+                        SizedBox(width: 5.w),
+                        Text(
+                          widget.roommates,
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: 14.sp, // Responsive font size
+                          ),
+                        ),
                       ],
                     ),
-                    Row(
-                      children: [
-                        const Icon(Icons.bathtub, size: 16, color: Colors.black),
-                        const SizedBox(width: 5),
-                        Text(widget.baths, style: const TextStyle(color: Colors.black)),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        const Icon(Icons.group, size: 16, color: Colors.black),
-                        const SizedBox(width: 5),
-                        Text(widget.roommates, style: const TextStyle(color: Colors.black)),
-                      ],
-                    ),
+                    // Price Text aligned to the right
                     Text(
                       '\$${widget.price}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'League Spartan',
-                        fontSize: 16,
+                        fontSize: 16.sp, // Responsive font size
                         fontWeight: FontWeight.bold,
                         color: Colors.black,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis, // Handle long numbers
+                      textAlign: TextAlign.right,
                     ),
                   ],
                 ),
@@ -167,4 +194,3 @@ class _PropertyCardState extends State<PropertyCard> {
     );
   }
 }
-
