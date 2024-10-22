@@ -41,6 +41,15 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
   int _currentPage = 0; // Track current carousel page
   bool showContactDetails = false; // Track whether to show contact details
 
+  String getFirstAndLastName(String fullName) {
+    List<String> nameParts = fullName.split(' ');
+    if (nameParts.length > 1) {
+      return '${nameParts.first} ${nameParts.last}';
+    } else {
+      return fullName; // If there's only one name, return it as is
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -140,12 +149,12 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                               ),
                             ),
                             SizedBox(height: 10.h), // Responsive spacing
-                            Row(
-                              children: [
-                                const Icon(Icons.location_on_outlined,
-                                    size: 20, color: Colors.black),
-                                SizedBox(width: 5.w), // Responsive spacing
-                                Text(
+                          Row(
+                            children: [
+                              const Icon(Icons.location_on_outlined, size: 20, color: Colors.black),
+                              SizedBox(width: 5.w), // Responsive spacing
+                              Expanded( // Use Expanded to allow the text to wrap
+                                child: Text(
                                   widget.address,
                                   style: TextStyle(
                                     fontFamily: 'League Spartan',
@@ -153,9 +162,12 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                                     fontSize: 19.sp, // Responsive font size
                                     color: Colors.black,
                                   ),
+                                  maxLines: 2, // Allow the text to wrap into 2 lines if needed
+                                  overflow: TextOverflow.ellipsis, // Handle text overflow
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
+                          ),
                             SizedBox(height: 20.h), // Responsive spacing
                             Text(
                               'Facilities',
@@ -229,7 +241,7 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              widget.agentName,
+                              getFirstAndLastName(widget.agentName),
                               style: TextStyle(
                                 fontFamily: 'Montserrat',
                                 fontWeight: FontWeight.w600,
@@ -292,7 +304,7 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                           onTap: () => _openEmailClient(
                             widget.agentEmail, // Email address of the agent
                             widget.title, // Property title
-                            widget.agentName, // Agent name
+                            getFirstAndLastName(widget.agentName), // Agent name
                           ),
                           child: Text(
                             'Email: ${widget.agentEmail}',

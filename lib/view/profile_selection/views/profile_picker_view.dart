@@ -117,7 +117,7 @@ class ProfilePickerView extends StatelessWidget {
                       'I want to rent a place!',
                       style: TextStyle(
                         fontFamily: 'Montserrat',
-                        fontSize: 18.sp, // Responsive font size
+                        fontSize: 16.sp, // Responsive font size
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
                       ),
@@ -140,7 +140,7 @@ class ProfilePickerView extends StatelessWidget {
                       'I want to list my place!',
                       style: TextStyle(
                         fontFamily: 'Montserrat',
-                        fontSize: 18.sp, // Responsive font size
+                        fontSize: 16.sp, // Responsive font size
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
                       ),
@@ -150,43 +150,6 @@ class ProfilePickerView extends StatelessWidget {
               ),
             ),
             const Spacer(),
-            // Align the dots at the left-bottom side
-            Padding(
-              padding: EdgeInsets.only(bottom: 40.h, left: 10.w), // Responsive padding
-              child: Align(
-                alignment: Alignment.bottomLeft,
-                child: Row(
-                  children: [
-                    Container(
-                      width: 10.w, // Responsive size
-                      height: 10.h, // Responsive size
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFF9A826),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    SizedBox(width: 5.w),
-                    Container(
-                      width: 10.w,
-                      height: 10.h,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFF9A826),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    SizedBox(width: 5.w),
-                    Container(
-                      width: 10.w,
-                      height: 10.h,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF0C356A),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
           ],
         ),
       ),

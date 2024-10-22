@@ -84,15 +84,7 @@ class WelcomePage extends StatelessWidget {
                     shape: BoxShape.circle,
                   ),
                 ),
-                SizedBox(width: 5.w), // Responsive spacing
-                Container(
-                  width: 10.w,
-                  height: 10.h,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFF9A826),
-                    shape: BoxShape.circle,
-                  ),
-                ),
+
               ],
             ),
           ),
