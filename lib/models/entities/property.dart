@@ -1,13 +1,32 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:hive/hive.dart';
 
+part 'property.g.dart';
+
+@HiveType(typeId: 0)
 class Property {
+  @HiveField(0)
   int id;
+
+  @HiveField(1)
   String address;
+
+  @HiveField(2)
   String complex_name;
+
+  @HiveField(3)
   String? description;
-  GeoPoint? location;
+
+  @HiveField(4)
+  final List<double> location; // Store [latitude, longitude] as List
+
+  @HiveField(5)
   List<String> photos;
+
+  @HiveField(6)
   String title;
+
+  @HiveField(7)
   double minutesFromCampus;
 
   // Constructor
@@ -16,11 +35,11 @@ class Property {
     required this.address,
     required this.complex_name,
     required this.description,
-    required this.location,
+    required GeoPoint location,
     required this.photos,
     required this.title,
     required this.minutesFromCampus,
-  });
+  }) : location = [location.latitude, location.longitude];
 
   // Factory method to create a Property object from Firebase data (JSON)
   factory Property.fromJson(Map<String, dynamic> json) {
@@ -53,5 +72,10 @@ class Property {
   @override
   String toString() {
     return 'Property{id: $id, address: $address, complex_name: $complex_name, description: $description, location: $location, photos: $photos, title: $title, minutesFromCampus: $minutesFromCampus}';
+  }
+
+  /// Getter method to return the location as a GeoPoint object
+  GeoPoint getLocation() {
+    return GeoPoint(location[0], location[1]);
   }
 }

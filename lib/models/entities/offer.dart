@@ -1,18 +1,46 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:hive/hive.dart';
 
+part 'offer.g.dart';
+
+@HiveType(typeId: 1)
 class Offer {
-  final Timestamp final_date;
+  @HiveField(0)
+  final DateTime final_date;
+
+  @HiveField(1)
   final String user_id;
+
+  @HiveField(2)
   final int property_id;
-  final Timestamp initial_date;
+
+  @HiveField(3)
+  final DateTime initial_date;
+
+  @HiveField(4)
   final bool is_active;
+
+  @HiveField(5)
   final int num_baths;
+
+  @HiveField(6)
   final int num_beds;
+
+  @HiveField(7)
   final int num_rooms;
+
+  @HiveField(8)
   final bool only_andes;
+
+  @HiveField(9)
   final double price_per_month;
+
+  @HiveField(10)
   final int roommates;
+
+  @HiveField(11)
   final String type;
+
+  @HiveField(12)
   final int offerId;
 
   Offer({
@@ -71,10 +99,10 @@ class Offer {
 
   // Method to update an Offer object
   Offer copyWith({
-    Timestamp? finalDate,
+    DateTime? finalDate,
     String? userId,
     int? propertyId,
-    Timestamp? initialDate,
+    DateTime? initialDate,
     bool? isActive,
     int? numBaths,
     int? numBeds,
