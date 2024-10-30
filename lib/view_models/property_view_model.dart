@@ -3,6 +3,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:logging/logging.dart';
+import '../connectivity/connectivity_service.dart';
 import '../models/entities/property.dart';
 
 class PropertyViewModel extends ChangeNotifier {
@@ -14,7 +15,7 @@ class PropertyViewModel extends ChangeNotifier {
 
   final CollectionReference _propertiesRef =
       FirebaseFirestore.instance.collection('properties');
-
+  final ConnectivityService _connectivityService = ConnectivityService();
   List<Property> get properties => _properties;
   bool get isLoading => _isLoading;
 
@@ -23,47 +24,43 @@ class PropertyViewModel extends ChangeNotifier {
     _setLoading(true);
 
     try {
-      QuerySnapshot snapshot = await _propertiesRef.get();
-
-      _properties = snapshot.docs.expand((doc) {
-        final propertyData = doc.data() as Map<String, dynamic>;
-
-        // Now we iterate through the nested fields inside the document
-        return propertyData.entries.map((entry) {
-          final id = entry.key;
-          final details = entry.value as Map<String, dynamic>;
-
-          // Check if location is a GeoPoint; if not, use a default GeoPoint
-          GeoPoint location = details['location'] is GeoPoint
-              ? details['location'] as GeoPoint
-              : const GeoPoint(0, 0);
-
-          // Create a Property object using the details map
-          return Property(
-            id: int.tryParse(id) ?? -1, // Convert the key (ID) to an int
-            address: details['address'] ?? '',
-            complex_name: details['complex_name'] ?? '',
-            description: details['description'] ?? '',
-            location: location, // Use the GeoPoint object
-            photos: List<String>.from(details['photos'] ?? []),
-            title: details['title'] ?? '',
-            minutesFromCampus: details['minutes_from_campus'] != null
-                ? (details['minutes_from_campus'] as num).toDouble()
-                : 0.0,
-          );
+      bool isConnected = await _connectivityService.isConnected();
+      if (isConnected) {
+        QuerySnapshot snapshot = await _propertiesRef.get();
+        _properties = snapshot.docs.expand((doc) {
+          final propertyData = doc.data() as Map<String, dynamic>;
+          return propertyData.entries.map((entry) {
+            final id = entry.key;
+            final details = entry.value as Map<String, dynamic>;
+            GeoPoint location = details['location'] is GeoPoint
+                ? details['location'] as GeoPoint
+                : const GeoPoint(0, 0);
+            return Property(
+              id: int.tryParse(id) ?? -1,
+              address: details['address'] ?? '',
+              complex_name: details['complex_name'] ?? '',
+              description: details['description'] ?? '',
+              location: location,
+              photos: List<String>.from(details['photos'] ?? []),
+              title: details['title'] ?? '',
+              minutesFromCampus: details['minutes_from_campus'] != null
+                  ? (details['minutes_from_campus'] as num).toDouble()
+                  : 0.0,
+            );
+          }).toList();
         }).toList();
-      }).toList();
 
-      // Save properties to Cache
-      final box = Hive.box<Property>('properties');
-      await box.clear();
-      await box.addAll(_properties);
-
-      notifyListeners();
+        final box = Hive.box<Property>('properties');
+        await box.clear();
+        await box.addAll(_properties);
+        notifyListeners();
+      } else {
+        final box = Hive.box<Property>('properties');
+        _properties = box.values.toList();
+        notifyListeners();
+      }
     } catch (e, stacktrace) {
       log.shout('Error fetching properties: $e\nStacktrace: $stacktrace');
-
-      // Load properties from cache
       final box = Hive.box<Property>('properties');
       _properties = box.values.toList();
       notifyListeners();
