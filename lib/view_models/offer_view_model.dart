@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:logging/logging.dart';
+import '../connectivity/connectivity_service.dart';
 import '../models/entities/offer.dart';
 import '../models/entities/property.dart';
 
@@ -19,6 +20,7 @@ class OfferViewModel extends ChangeNotifier {
       FirebaseFirestore.instance.collection('properties');
   final CollectionReference _userViewsRef =
       FirebaseFirestore.instance.collection('user_views');
+  final ConnectivityService _connectivityService = ConnectivityService();
 
   List<OfferProperty> get offersWithProperties => _offersWithProperties;
   bool get isLoading => _isLoading;
@@ -105,98 +107,77 @@ class OfferViewModel extends ChangeNotifier {
     _setLoading(true);
 
     try {
-      // Fetch properties
-      DocumentSnapshot propertyDoc =
-          await _propertiesRef.doc('X8qn8e6UXKberOSYZnXk').get();
-      Map<String, Property> propertyMap = _mapSnapshotToProperties(propertyDoc);
+      bool isConnected = await _connectivityService.isConnected();
+      if (isConnected) {
+        // Fetch from Firestore
+        DocumentSnapshot propertyDoc =
+            await _propertiesRef.doc('X8qn8e6UXKberOSYZnXk').get();
+        Map<String, Property> propertyMap =
+            _mapSnapshotToProperties(propertyDoc);
 
-      // Safeguard in case the properties document is missing or has no data
-      if (propertyMap.isEmpty) {
-        log.warning(
-            'No properties found. Cannot proceed with offer filtering.');
-        _setLoading(false);
-        return;
-      }
+        DocumentSnapshot offersDoc =
+            await _offersRef.doc('E2amoJzmIbhtLq65ScpY').get();
+        if (offersDoc.exists && offersDoc.data() != null) {
+          var offersData = offersDoc.data() as Map<String, dynamic>;
+          List<OfferProperty> tempOffersWithProperties = [];
 
-      // Fetch offers
-      DocumentSnapshot offersDoc =
-          await _offersRef.doc('E2amoJzmIbhtLq65ScpY').get();
+          offersData.forEach((key, offerData) {
+            if (offerData['is_active'] == true) {
+              String propertyId = offerData['id_property'].toString();
+              Property? property = propertyMap[propertyId];
 
-      // Check if the offers document exists and has the expected structure
-      if (offersDoc.exists && offersDoc.data() != null) {
-        var offersData = offersDoc.data() as Map<String, dynamic>;
-        List<OfferProperty> tempOffersWithProperties = [];
+              if (property != null) {
+                Offer offer = Offer(
+                  final_date: (offerData['final_date'] as Timestamp).toDate(),
+                  initial_date:
+                      (offerData['initial_date'] as Timestamp).toDate(),
+                  user_id: offerData['user_id'],
+                  property_id: offerData['id_property'],
+                  is_active: offerData['is_active'],
+                  num_baths: (offerData['num_baths'] is double)
+                      ? (offerData['num_baths'] as double).toInt()
+                      : offerData['num_baths'],
+                  num_beds: (offerData['num_beds'] is double)
+                      ? (offerData['num_beds'] as double).toInt()
+                      : offerData['num_beds'],
+                  num_rooms: (offerData['num_rooms'] is double)
+                      ? (offerData['num_rooms'] as double).toInt()
+                      : offerData['num_rooms'],
+                  roommates: (offerData['roommates'] is double)
+                      ? (offerData['roommates'] as double).toInt()
+                      : offerData['roommates'],
+                  only_andes: offerData['only_andes'],
+                  price_per_month: (offerData['price_per_month'] is int)
+                      ? (offerData['price_per_month'] as int).toDouble()
+                      : offerData['price_per_month'],
+                  type: offerData['type'],
+                  offerId: int.tryParse(key) ?? 0,
+                );
 
-        offersData.forEach((key, offerData) {
-          log.info('Processing offer data: $offerData'); // Log the offer data
-
-          if (offerData['is_active'] == true) {
-            String propertyId = offerData['id_property'].toString();
-            log.info(
-                'Looking for property with id_property: $propertyId'); // Log the propertyId
-            Property? property = propertyMap[propertyId];
-
-            if (property != null) {
-              Offer offer = Offer(
-                final_date: (offerData['final_date'] as Timestamp).toDate(),
-                initial_date: (offerData['initial_date'] as Timestamp).toDate(),
-                user_id: offerData['user_id'],
-                property_id: offerData['id_property'],
-                is_active: offerData['is_active'],
-
-                // Ensure fields are cast to int when necessary
-                num_baths: (offerData['num_baths'] is double)
-                    ? (offerData['num_baths'] as double).toInt()
-                    : offerData['num_baths'],
-                num_beds: (offerData['num_beds'] is double)
-                    ? (offerData['num_beds'] as double).toInt()
-                    : offerData['num_beds'],
-                num_rooms: (offerData['num_rooms'] is double)
-                    ? (offerData['num_rooms'] as double).toInt()
-                    : offerData['num_rooms'],
-                roommates: (offerData['roommates'] is double)
-                    ? (offerData['roommates'] as double).toInt()
-                    : offerData['roommates'],
-
-                only_andes: offerData['only_andes'],
-
-                // Similarly handle price_per_month, cast to double
-                price_per_month: (offerData['price_per_month'] is int)
-                    ? (offerData['price_per_month'] as int).toDouble()
-                    : offerData['price_per_month'],
-
-                type: offerData['type'],
-                offerId: int.tryParse(key) ?? 0,
-              );
-
-              log.info('Created offer: $offer'); // Log the created offer
-
-              // Apply filters if necessary
-              if (_applyFilters(
-                  offer, property, minPrice, maxPrice, maxMinutes, dateRange)) {
-                tempOffersWithProperties
-                    .add(OfferProperty(offer: offer, property: property));
+                if (_applyFilters(offer, property, minPrice, maxPrice,
+                    maxMinutes, dateRange)) {
+                  tempOffersWithProperties
+                      .add(OfferProperty(offer: offer, property: property));
+                }
               }
-            } else {
-              log.warning("Property not found for id_property $propertyId");
             }
-          }
-        });
+          });
 
-        // Save offers to Hive Cache
-        final box = Hive.box<OfferProperty>('offer_properties');
-        await box.clear();
-        await box.addAll(tempOffersWithProperties);
+          final box = Hive.box<OfferProperty>('offer_properties');
+          await box.clear();
+          await box.addAll(tempOffersWithProperties);
 
-        // Set filtered results
-        _offersWithProperties = tempOffersWithProperties;
-        notifyListeners();
+          _offersWithProperties = tempOffersWithProperties;
+          notifyListeners();
+        }
       } else {
-        log.warning("Offer document does not exist or is empty");
+        // Load from Hive
+        final box = Hive.box<OfferProperty>('offer_properties');
+        _offersWithProperties = box.values.toList();
+        notifyListeners();
       }
     } catch (e, stacktrace) {
       log.shout('Error fetching offers: $e\nStacktrace: $stacktrace');
-      // Load Offers from Cache
       final box = Hive.box<OfferProperty>('offer_properties');
       _offersWithProperties = box.values.toList();
       notifyListeners();
