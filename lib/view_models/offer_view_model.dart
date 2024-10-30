@@ -1,11 +1,13 @@
+import 'package:andlet/models/entities/offer_property.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 import 'package:logging/logging.dart';
 import '../models/entities/offer.dart';
 import '../models/entities/property.dart';
 
 class OfferViewModel extends ChangeNotifier {
-  List<OfferWithProperty> _offersWithProperties = [];
+  List<OfferProperty> _offersWithProperties = [];
   bool _isLoading = false;
   bool? userRoommatePreference;
 
@@ -18,7 +20,7 @@ class OfferViewModel extends ChangeNotifier {
   final CollectionReference _userViewsRef =
       FirebaseFirestore.instance.collection('user_views');
 
-  List<OfferWithProperty> get offersWithProperties => _offersWithProperties;
+  List<OfferProperty> get offersWithProperties => _offersWithProperties;
   bool get isLoading => _isLoading;
 
   /// Fetch user's roommate preferences
@@ -117,12 +119,13 @@ class OfferViewModel extends ChangeNotifier {
       }
 
       // Fetch offers
-      DocumentSnapshot offersDoc = await _offersRef.doc('E2amoJzmIbhtLq65ScpY').get();
+      DocumentSnapshot offersDoc =
+          await _offersRef.doc('E2amoJzmIbhtLq65ScpY').get();
 
       // Check if the offers document exists and has the expected structure
       if (offersDoc.exists && offersDoc.data() != null) {
         var offersData = offersDoc.data() as Map<String, dynamic>;
-        List<OfferWithProperty> tempOffersWithProperties = [];
+        List<OfferProperty> tempOffersWithProperties = [];
 
         offersData.forEach((key, offerData) {
           log.info('Processing offer data: $offerData'); // Log the offer data
@@ -135,8 +138,8 @@ class OfferViewModel extends ChangeNotifier {
 
             if (property != null) {
               Offer offer = Offer(
-                final_date: offerData['final_date'],
-                initial_date: offerData['initial_date'],
+                final_date: (offerData['final_date'] as Timestamp).toDate(),
+                initial_date: (offerData['initial_date'] as Timestamp).toDate(),
                 user_id: offerData['user_id'],
                 property_id: offerData['id_property'],
                 is_active: offerData['is_active'],
@@ -168,19 +171,22 @@ class OfferViewModel extends ChangeNotifier {
 
               log.info('Created offer: $offer'); // Log the created offer
 
-
-
               // Apply filters if necessary
               if (_applyFilters(
                   offer, property, minPrice, maxPrice, maxMinutes, dateRange)) {
                 tempOffersWithProperties
-                    .add(OfferWithProperty(offer: offer, property: property));
+                    .add(OfferProperty(offer: offer, property: property));
               }
             } else {
               log.warning("Property not found for id_property $propertyId");
             }
           }
         });
+
+        // Save offers to Hive Cache
+        final box = Hive.box<OfferProperty>('offer_properties');
+        await box.clear();
+        await box.addAll(tempOffersWithProperties);
 
         // Set filtered results
         _offersWithProperties = tempOffersWithProperties;
@@ -190,6 +196,10 @@ class OfferViewModel extends ChangeNotifier {
       }
     } catch (e, stacktrace) {
       log.shout('Error fetching offers: $e\nStacktrace: $stacktrace');
+      // Load Offers from Cache
+      final box = Hive.box<OfferProperty>('offer_properties');
+      _offersWithProperties = box.values.toList();
+      notifyListeners();
     } finally {
       _setLoading(false);
     }
@@ -226,13 +236,9 @@ class OfferViewModel extends ChangeNotifier {
           List<String> photos = List<String>.from(propertyData['photos'] ?? []);
 
           // Handle GeoPoint - allow empty or invalid locations
-          var location = propertyData['location'];
-          GeoPoint? geoPoint;
-          if (location is GeoPoint) {
-            geoPoint = location;
-          } else {
-            geoPoint = null; // Default to null if not a valid GeoPoint
-          }
+          GeoPoint geoPoint = propertyData['location'] is GeoPoint
+              ? propertyData['location'] as GeoPoint
+              : const GeoPoint(0, 0);
 
           Property property = Property(
             id: propertyId,
@@ -285,8 +291,8 @@ class OfferViewModel extends ChangeNotifier {
 
     // Date range filter: Check if the offer is available within the provided date range
     if (dateRange != null) {
-      DateTime initialDate = offer.initial_date.toDate(); // Convert to DateTime
-      DateTime finalDate = offer.final_date.toDate(); // Convert to DateTime
+      DateTime initialDate = offer.initial_date; // Convert to DateTime
+      DateTime finalDate = offer.final_date; // Convert to DateTime
 
       // Check if the offer's date range overlaps with the provided date range
       if (finalDate.isBefore(dateRange.start) ||
@@ -308,11 +314,4 @@ class OfferViewModel extends ChangeNotifier {
     _isLoading = loading;
     notifyListeners();
   }
-}
-
-class OfferWithProperty {
-  final Offer offer;
-  final Property property;
-
-  OfferWithProperty({required this.offer, required this.property});
 }

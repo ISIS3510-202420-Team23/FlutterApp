@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 import 'package:logging/logging.dart';
 import '../models/entities/property.dart';
 
@@ -11,7 +12,8 @@ class PropertyViewModel extends ChangeNotifier {
   static final log = Logger('PropertyViewModel');
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
-  final CollectionReference _propertiesRef = FirebaseFirestore.instance.collection('properties');
+  final CollectionReference _propertiesRef =
+      FirebaseFirestore.instance.collection('properties');
 
   List<Property> get properties => _properties;
   bool get isLoading => _isLoading;
@@ -31,13 +33,18 @@ class PropertyViewModel extends ChangeNotifier {
           final id = entry.key;
           final details = entry.value as Map<String, dynamic>;
 
+          // Check if location is a GeoPoint; if not, use a default GeoPoint
+          GeoPoint location = details['location'] is GeoPoint
+              ? details['location'] as GeoPoint
+              : const GeoPoint(0, 0);
+
           // Create a Property object using the details map
           return Property(
             id: int.tryParse(id) ?? -1, // Convert the key (ID) to an int
             address: details['address'] ?? '',
             complex_name: details['complex_name'] ?? '',
             description: details['description'] ?? '',
-            location: details['location'] ?? const GeoPoint(0, 0),
+            location: location, // Use the GeoPoint object
             photos: List<String>.from(details['photos'] ?? []),
             title: details['title'] ?? '',
             minutesFromCampus: details['minutes_from_campus'] != null
@@ -47,9 +54,19 @@ class PropertyViewModel extends ChangeNotifier {
         }).toList();
       }).toList();
 
+      // Save properties to Cache
+      final box = Hive.box<Property>('properties');
+      await box.clear();
+      await box.addAll(_properties);
+
       notifyListeners();
     } catch (e, stacktrace) {
       log.shout('Error fetching properties: $e\nStacktrace: $stacktrace');
+
+      // Load properties from cache
+      final box = Hive.box<Property>('properties');
+      _properties = box.values.toList();
+      notifyListeners();
     } finally {
       _setLoading(false);
     }
@@ -61,7 +78,7 @@ class PropertyViewModel extends ChangeNotifier {
     for (String path in imagePaths) {
       try {
         String downloadUrl =
-        await _storage.ref('properties/$path').getDownloadURL();
+            await _storage.ref('properties/$path').getDownloadURL();
         imageUrls.add(downloadUrl);
       } catch (e) {
         log.shout('Error fetching image URL for $path: $e');
@@ -69,6 +86,7 @@ class PropertyViewModel extends ChangeNotifier {
     }
     return imageUrls;
   }
+
   /// Method to get a property by its ID
   Future<Property?> getPropertyById(int id) async {
     try {
@@ -91,7 +109,8 @@ class PropertyViewModel extends ChangeNotifier {
             location: details['location'] ?? const GeoPoint(0, 0),
             photos: List<String>.from(details['photos'] ?? []),
             title: details['title'] ?? '',
-            minutesFromCampus: (details['minutes_from_campus'] as num?)?.toDouble() ?? 0.0,
+            minutesFromCampus:
+                (details['minutes_from_campus'] as num?)?.toDouble() ?? 0.0,
           );
         }
       }
@@ -99,7 +118,8 @@ class PropertyViewModel extends ChangeNotifier {
       // If no property with the given ID was found
       log.info('Property with ID $id not found');
     } catch (e, stacktrace) {
-      log.shout('Error fetching property by ID $id: $e\nStacktrace: $stacktrace');
+      log.shout(
+          'Error fetching property by ID $id: $e\nStacktrace: $stacktrace');
     }
 
     return null;

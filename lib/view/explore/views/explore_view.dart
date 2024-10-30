@@ -1,12 +1,12 @@
+import 'package:andlet/analytics/analytics_engine.dart';
+import 'package:andlet/view_models/user_action_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // For formatting dates
 import 'package:flutter_screenutil/flutter_screenutil.dart'; // For responsive design
 import 'package:provider/provider.dart';
 import 'filter_modal.dart';
 import 'property_card.dart';
-import 'package:andlet/analytics/analytics_engine.dart';
-import 'package:andlet/view_models/user_action_view_model.dart';
-import '../../../cas/user_lastContact_landloard.dart';
+import '../../../cas/user_last_contact_landlord.dart';
 import '../../../view_models/offer_view_model.dart';
 import '../../../view_models/property_view_model.dart';
 import '../../../view_models/user_view_model.dart';
@@ -65,13 +65,15 @@ class _ExploreViewState extends State<ExploreView> {
   // Fetch user preferences for roommates from Firestore
   Future<void> fetchUserPreferences() async {
     try {
-      var userPreferences = await Provider.of<OfferViewModel>(context, listen: false)
-          .fetchUserRoommatePreferences(widget.userEmail);
+      var userPreferences =
+          await Provider.of<OfferViewModel>(context, listen: false)
+              .fetchUserRoommatePreferences(widget.userEmail);
       setState(() {
-        userRoommatePreference = userPreferences; // true for prefers roommates, false for no roommates
+        userRoommatePreference =
+            userPreferences; // true for prefers roommates, false for no roommates
       });
     } catch (e) {
-      // Handle error
+      // ('Error fetching user preferences: $e');
     }
   }
 
@@ -124,7 +126,7 @@ class _ExploreViewState extends State<ExploreView> {
   }
 
   // Sort offers based on roommate preference
-  List<OfferWithProperty> _sortOffers(List<OfferWithProperty> offers) {
+  List<OfferProperty> _sortOffers(List<OfferProperty> offers) {
     if (userRoommatePreference == null) {
       return offers; // No preference, return as is
     }
@@ -185,7 +187,7 @@ class _ExploreViewState extends State<ExploreView> {
                   backgroundImage: widget.photoUrl.isNotEmpty
                       ? NetworkImage(widget.photoUrl)
                       : const AssetImage('lib/assets/personaicono.png')
-                  as ImageProvider,
+                          as ImageProvider,
                   radius: 35.r, // Responsive radius
                 ),
               ],
@@ -243,40 +245,51 @@ class _ExploreViewState extends State<ExploreView> {
             // Display active filters without option to delete
             if (selectedPrice != null || selectedMinutes != null || selectedDateRange != null)
               Padding(
-                padding: EdgeInsets.symmetric(vertical: 5.h), // Minimized vertical padding
+                padding: EdgeInsets.symmetric(
+                    vertical: 5.h), // Minimized vertical padding
                 child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal, // Enable horizontal scrolling
+                  scrollDirection:
+                      Axis.horizontal, // Enable horizontal scrolling
                   child: Row(
                     children: [
                       if (selectedPrice != null)
                         Padding(
-                          padding: const EdgeInsets.only(right: 8.0), // Add some spacing between chips
+                          padding: const EdgeInsets.only(
+                              right: 8.0), // Add some spacing between chips
                           child: Chip(
                             label: Text(
                               'Price: \$${selectedPrice!.toInt()}',
-                              style: const TextStyle(color: Color(0xFF0C356A)), // Custom font color
+                              style: const TextStyle(
+                                  color:
+                                      Color(0xFF0C356A)), // Custom font color
                             ),
                             backgroundColor: const Color(0xFFB5D5FF), // Light blue color
                           ),
                         ),
                       if (selectedMinutes != null)
                         Padding(
-                          padding: const EdgeInsets.only(right: 8.0), // Add some spacing between chips
+                          padding: const EdgeInsets.only(
+                              right: 8.0), // Add some spacing between chips
                           child: Chip(
                             label: Text(
                               'Minutes: ${selectedMinutes!.toInt()}',
-                              style: const TextStyle(color: Color(0xFF0C356A)), // Custom font color
+                              style: const TextStyle(
+                                  color:
+                                      Color(0xFF0C356A)), // Custom font color
                             ),
                             backgroundColor: const Color(0xFFB5D5FF), // Light blue color
                           ),
                         ),
                       if (selectedDateRange != null)
                         Padding(
-                          padding: const EdgeInsets.only(right: 8.0), // Add some spacing between chips
+                          padding: const EdgeInsets.only(
+                              right: 8.0), // Add some spacing between chips
                           child: Chip(
                             label: Text(
                               'Dates: ${DateFormat('MM/dd').format(selectedDateRange!.start)} - ${DateFormat('MM/dd').format(selectedDateRange!.end)}',
-                              style: const TextStyle(color: Color(0xFF0C356A)), // Custom font color
+                              style: const TextStyle(
+                                  color:
+                                      Color(0xFF0C356A)), // Custom font color
                             ),
                             backgroundColor: const Color(0xFFB5D5FF), // Light blue color
                           ),
