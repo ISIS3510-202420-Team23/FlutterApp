@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 import 'package:logging/logging.dart';
+import '../connectivity/connectivity_service.dart';
 import '../models/entities/property.dart';
 
 class PropertyViewModel extends ChangeNotifier {
@@ -11,8 +13,9 @@ class PropertyViewModel extends ChangeNotifier {
   static final log = Logger('PropertyViewModel');
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
-  final CollectionReference _propertiesRef = FirebaseFirestore.instance.collection('properties');
-
+  final CollectionReference _propertiesRef =
+      FirebaseFirestore.instance.collection('properties');
+  final ConnectivityService _connectivityService = ConnectivityService();
   List<Property> get properties => _properties;
   bool get isLoading => _isLoading;
 
@@ -21,37 +24,61 @@ class PropertyViewModel extends ChangeNotifier {
     _setLoading(true);
 
     try {
-      QuerySnapshot snapshot = await _propertiesRef.get();
-
-      _properties = snapshot.docs.expand((doc) {
-        final propertyData = doc.data() as Map<String, dynamic>;
-
-        // Now we iterate through the nested fields inside the document
-        return propertyData.entries.map((entry) {
-          final id = entry.key;
-          final details = entry.value as Map<String, dynamic>;
-
-          // Create a Property object using the details map
-          return Property(
-            id: int.tryParse(id) ?? -1, // Convert the key (ID) to an int
-            address: details['address'] ?? '',
-            complex_name: details['complex_name'] ?? '',
-            description: details['description'] ?? '',
-            location: details['location'] ?? const GeoPoint(0, 0),
-            photos: List<String>.from(details['photos'] ?? []),
-            title: details['title'] ?? '',
-            minutesFromCampus: details['minutes_from_campus'] != null
-                ? (details['minutes_from_campus'] as num).toDouble()
-                : 0.0,
-          );
+      bool isConnected = await _connectivityService.isConnected();
+      if (isConnected) {
+        // Fetch properties from Firestore if online
+        QuerySnapshot snapshot = await _propertiesRef.get();
+        _properties = snapshot.docs.expand((doc) {
+          final propertyData = doc.data() as Map<String, dynamic>;
+          return propertyData.entries.map((entry) {
+            final id = entry.key;
+            final details = entry.value as Map<String, dynamic>;
+            GeoPoint location = details['location'] is GeoPoint
+                ? details['location'] as GeoPoint
+                : const GeoPoint(0, 0);
+            return Property(
+              id: int.tryParse(id) ?? -1,
+              address: details['address'] ?? '',
+              complex_name: details['complex_name'] ?? '',
+              description: details['description'] ?? '',
+              location: location,
+              photos: List<String>.from(details['photos'] ?? []),
+              title: details['title'] ?? '',
+              minutesFromCampus: details['minutes_from_campus'] != null
+                  ? (details['minutes_from_campus'] as num).toDouble()
+                  : 0.0,
+            );
+          }).toList();
         }).toList();
-      }).toList();
 
-      notifyListeners();
+        // Store the fetched properties in Hive for offline use
+        final box = Hive.box<Property>('properties');
+        await box.clear();
+        await box.addAll(_properties);
+      } else {
+        // Load properties from Hive when offline
+        final box = Hive.box<Property>('properties');
+        if (box.isNotEmpty) {
+          _properties = box.values.toList();
+        } else {
+          log.warning('No cached properties found for offline mode.');
+          _properties = []; // Clear list if no cache available
+        }
+      }
     } catch (e, stacktrace) {
       log.shout('Error fetching properties: $e\nStacktrace: $stacktrace');
+
+      // In case of an error, load data from Hive
+      final box = Hive.box<Property>('properties');
+      if (box.isNotEmpty) {
+        _properties = box.values.toList();
+      } else {
+        log.warning('No cached properties found during error recovery.');
+        _properties = []; // Clear list if no cache available
+      }
     } finally {
       _setLoading(false);
+      notifyListeners();
     }
   }
 
@@ -61,7 +88,7 @@ class PropertyViewModel extends ChangeNotifier {
     for (String path in imagePaths) {
       try {
         String downloadUrl =
-        await _storage.ref('properties/$path').getDownloadURL();
+            await _storage.ref('properties/$path').getDownloadURL();
         imageUrls.add(downloadUrl);
       } catch (e) {
         log.shout('Error fetching image URL for $path: $e');
@@ -69,6 +96,7 @@ class PropertyViewModel extends ChangeNotifier {
     }
     return imageUrls;
   }
+
   /// Method to get a property by its ID
   Future<Property?> getPropertyById(int id) async {
     try {
@@ -91,7 +119,8 @@ class PropertyViewModel extends ChangeNotifier {
             location: details['location'] ?? const GeoPoint(0, 0),
             photos: List<String>.from(details['photos'] ?? []),
             title: details['title'] ?? '',
-            minutesFromCampus: (details['minutes_from_campus'] as num?)?.toDouble() ?? 0.0,
+            minutesFromCampus:
+                (details['minutes_from_campus'] as num?)?.toDouble() ?? 0.0,
           );
         }
       }
@@ -99,7 +128,8 @@ class PropertyViewModel extends ChangeNotifier {
       // If no property with the given ID was found
       log.info('Property with ID $id not found');
     } catch (e, stacktrace) {
-      log.shout('Error fetching property by ID $id: $e\nStacktrace: $stacktrace');
+      log.shout(
+          'Error fetching property by ID $id: $e\nStacktrace: $stacktrace');
     }
 
     return null;
