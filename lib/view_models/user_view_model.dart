@@ -12,7 +12,7 @@ class UserViewModel extends ChangeNotifier {
 
   // Reference to Firestore 'users' collection
   final CollectionReference _usersRef =
-  FirebaseFirestore.instance.collection('users');
+      FirebaseFirestore.instance.collection('users');
 
   /// Getter for users
   List<User> get users => _users;
@@ -37,7 +37,8 @@ class UserViewModel extends ChangeNotifier {
           return User(
             email: email,
             name: details['name'] ?? '',
-            phone: details['phone'] ?? 0,
+            phone:
+                int.tryParse(details['phone'].toString()) ?? 0, // Updated line
             photo: details['photo'] ?? '',
             is_andes: details['is_andes'] ?? false,
             type_user: details['type_user'] ?? '',
@@ -47,8 +48,8 @@ class UserViewModel extends ChangeNotifier {
       }).toList();
 
       notifyListeners();
-    } catch (e) {
-      log.shout('Error fetching users: $e');
+    } catch (e, stacktrace) {
+      log.shout('Error fetching users: $e\nStacktrace: $stacktrace');
     } finally {
       _setLoading(false);
     }
@@ -58,7 +59,9 @@ class UserViewModel extends ChangeNotifier {
     try {
       // Encode userId (replace dots with underscores)
       String encodedUserId = userId.replaceAll('.', '_');
-      DocumentSnapshot usersDoc = await _usersRef.doc('eBbttobInFQe6i9wLHSF').get(); // Fixed document ID
+      DocumentSnapshot usersDoc = await _usersRef
+          .doc('eBbttobInFQe6i9wLHSF')
+          .get(); // Fixed document ID
 
       if (usersDoc.exists) {
         var userData = usersDoc[encodedUserId] as Map<String, dynamic>;
@@ -74,7 +77,8 @@ class UserViewModel extends ChangeNotifier {
 
   // Method to create user_views document if it doesn't exist
   Future<void> createUserViewsDocumentIfNotExists(String userEmail) async {
-    final CollectionReference userViewsRef = FirebaseFirestore.instance.collection('user_views');
+    final CollectionReference userViewsRef =
+        FirebaseFirestore.instance.collection('user_views');
 
     DocumentSnapshot userDoc = await userViewsRef.doc(userEmail).get();
     if (!userDoc.exists) {
@@ -90,7 +94,8 @@ class UserViewModel extends ChangeNotifier {
   Future<void> addUser(User user) async {
     try {
       // Reference to the specific document where users will be stored as subfields
-      final usersDocRef = _usersRef.doc('eBbttobInFQe6i9wLHSF'); // Fixed document ID
+      final usersDocRef =
+          _usersRef.doc('eBbttobInFQe6i9wLHSF'); // Fixed document ID
 
       // Encode email to avoid dots causing nesting
       final String emailKey = _encodeEmail(user.email);
@@ -142,7 +147,6 @@ class UserViewModel extends ChangeNotifier {
       log.shout('Error removing user: $e');
     }
   }
-
 
   /// Method to encode email by replacing dots to prevent Firestore nesting
   String _encodeEmail(String email) {
