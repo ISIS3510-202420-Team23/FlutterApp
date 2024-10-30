@@ -26,6 +26,7 @@ class PropertyViewModel extends ChangeNotifier {
     try {
       bool isConnected = await _connectivityService.isConnected();
       if (isConnected) {
+        // Fetch properties from Firestore if online
         QuerySnapshot snapshot = await _propertiesRef.get();
         _properties = snapshot.docs.expand((doc) {
           final propertyData = doc.data() as Map<String, dynamic>;
@@ -50,22 +51,34 @@ class PropertyViewModel extends ChangeNotifier {
           }).toList();
         }).toList();
 
+        // Store the fetched properties in Hive for offline use
         final box = Hive.box<Property>('properties');
         await box.clear();
         await box.addAll(_properties);
-        notifyListeners();
       } else {
+        // Load properties from Hive when offline
         final box = Hive.box<Property>('properties');
-        _properties = box.values.toList();
-        notifyListeners();
+        if (box.isNotEmpty) {
+          _properties = box.values.toList();
+        } else {
+          log.warning('No cached properties found for offline mode.');
+          _properties = []; // Clear list if no cache available
+        }
       }
     } catch (e, stacktrace) {
       log.shout('Error fetching properties: $e\nStacktrace: $stacktrace');
+
+      // In case of an error, load data from Hive
       final box = Hive.box<Property>('properties');
-      _properties = box.values.toList();
-      notifyListeners();
+      if (box.isNotEmpty) {
+        _properties = box.values.toList();
+      } else {
+        log.warning('No cached properties found during error recovery.');
+        _properties = []; // Clear list if no cache available
+      }
     } finally {
       _setLoading(false);
+      notifyListeners();
     }
   }
 

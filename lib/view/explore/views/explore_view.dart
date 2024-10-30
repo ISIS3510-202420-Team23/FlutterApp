@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // For formatting dates
 import 'package:flutter_screenutil/flutter_screenutil.dart'; // For responsive design
 import 'package:provider/provider.dart';
+import '../../../connectivity/connectivity_service.dart';
 import 'filter_modal.dart';
 import 'property_card.dart';
 import '../../../cas/user_last_contact_landlord.dart';
@@ -54,10 +55,21 @@ class _ExploreViewState extends State<ExploreView> {
 
   // Fetch initial data
   Future<void> _fetchInitialData() async {
-    await Provider.of<OfferViewModel>(context, listen: false)
-        .fetchOffersWithFilters();
-    await Provider.of<PropertyViewModel>(context, listen: false)
-        .fetchProperties();
+    final offerViewModel = Provider.of<OfferViewModel>(context, listen: false);
+    final propertyViewModel =
+        Provider.of<PropertyViewModel>(context, listen: false);
+
+    bool isConnected = await ConnectivityService().isConnected();
+
+    if (!isConnected) {
+      // Offline: Use cached data only
+      offerViewModel.fetchOffersWithFilters();
+      propertyViewModel.fetchProperties();
+    } else {
+      // Online: Fetch from Firestore and then store in cache
+      await offerViewModel.fetchOffersWithFilters();
+      await propertyViewModel.fetchProperties();
+    }
   }
 
   // Refresh function to be called on pull-to-refresh
@@ -334,10 +346,8 @@ class _ExploreViewState extends State<ExploreView> {
                               ),
                             ),
                           )
-                        : ListView.builder(
-                            itemCount: sortedOffers.length,
-                            itemBuilder: (context, index) {
-                              final offerWithProperty = sortedOffers[index];
+                        : ListView(
+                            children: sortedOffers.map((offerWithProperty) {
                               final offer = offerWithProperty.offer;
                               final property = offerWithProperty.property;
 
@@ -442,7 +452,7 @@ class _ExploreViewState extends State<ExploreView> {
                                   );
                                 },
                               );
-                            },
+                            }).toList(),
                           ),
               ),
             ),

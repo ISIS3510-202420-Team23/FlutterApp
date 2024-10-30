@@ -104,12 +104,18 @@ class OfferViewModel extends ChangeNotifier {
     double? maxMinutes,
     DateTimeRange? dateRange,
   }) async {
+    // Check if data is already available and avoid re-fetching
+    if (_offersWithProperties.isNotEmpty && !_isLoading) {
+      return;
+    }
+
     _setLoading(true);
 
     try {
+      // Check network connectivity before making Firebase requests
       bool isConnected = await _connectivityService.isConnected();
       if (isConnected) {
-        // Fetch from Firestore
+        // Fetch from Firestore if online
         DocumentSnapshot propertyDoc =
             await _propertiesRef.doc('X8qn8e6UXKberOSYZnXk').get();
         Map<String, Property> propertyMap =
@@ -163,23 +169,37 @@ class OfferViewModel extends ChangeNotifier {
             }
           });
 
+          // Store the fetched offers in Hive for offline use
           final box = Hive.box<OfferProperty>('offer_properties');
           await box.clear();
           await box.addAll(tempOffersWithProperties);
 
+          // Update the UI with the latest offers
           _offersWithProperties = tempOffersWithProperties;
           notifyListeners();
         }
       } else {
-        // Load from Hive
+        // Load from Hive when offline
         final box = Hive.box<OfferProperty>('offer_properties');
-        _offersWithProperties = box.values.toList();
+        if (box.isNotEmpty) {
+          _offersWithProperties = box.values.toList();
+        } else {
+          log.warning('No cached offers found for offline mode.');
+          _offersWithProperties = []; // Clear list if no cache available
+        }
         notifyListeners();
       }
     } catch (e, stacktrace) {
       log.shout('Error fetching offers: $e\nStacktrace: $stacktrace');
+
+      // In case of an error, load data from Hive
       final box = Hive.box<OfferProperty>('offer_properties');
-      _offersWithProperties = box.values.toList();
+      if (box.isNotEmpty) {
+        _offersWithProperties = box.values.toList();
+      } else {
+        log.warning('No cached offers found during error recovery.');
+        _offersWithProperties = []; // Clear list if no cache available
+      }
       notifyListeners();
     } finally {
       _setLoading(false);
