@@ -12,6 +12,7 @@ import 'package:logging_to_logcat/logging_to_logcat.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart'; // Added for responsiveness
+import 'models/entities/geo_point_adapter.dart';
 import 'models/entities/offer.dart';
 import 'models/entities/offer_property.dart';
 import 'models/entities/property.dart';
@@ -41,6 +42,7 @@ Future<void> _initializeApp() async {
   Hive.registerAdapter(PropertyAdapter());
   Hive.registerAdapter(OfferAdapter());
   Hive.registerAdapter(OfferPropertyAdapter());
+  Hive.registerAdapter(GeoPointAdapter()); // Register the GeoPointAdapter
   await Hive.openBox<Property>('properties');
   await Hive.openBox<Offer>('offers');
   await Hive.openBox<OfferProperty>('offer_properties');

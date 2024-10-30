@@ -18,7 +18,7 @@ class Property {
   String? description;
 
   @HiveField(4)
-  final List<double> location; // Store [latitude, longitude] as List
+  GeoPoint location;
 
   @HiveField(5)
   List<String> photos;
@@ -35,11 +35,11 @@ class Property {
     required this.address,
     required this.complex_name,
     required this.description,
-    required GeoPoint location,
+    required this.location,
     required this.photos,
     required this.title,
     required this.minutesFromCampus,
-  }) : location = [location.latitude, location.longitude];
+  });
 
   // Factory method to create a Property object from Firebase data (JSON)
   factory Property.fromJson(Map<String, dynamic> json) {
@@ -48,7 +48,7 @@ class Property {
       address: json['address'] as String,
       description: json['description'] as String,
       complex_name: json['complex_name'] as String,
-      location: json['location'] as GeoPoint,
+      location: json['location'] as GeoPoint, // Change to GeoPoint
       photos: List<String>.from(json['photos'] as List<dynamic>),
       title: json['title'] as String,
       minutesFromCampus: json['minutes_from_campus'] as double,
@@ -62,7 +62,7 @@ class Property {
       'address': address,
       'description': description,
       'complex_name': complex_name,
-      'location': location,
+      'location': location, // Change to GeoPoint
       'photos': photos,
       'title': title,
       'minutes_from_campus': minutesFromCampus,
@@ -74,8 +74,8 @@ class Property {
     return 'Property{id: $id, address: $address, complex_name: $complex_name, description: $description, location: $location, photos: $photos, title: $title, minutesFromCampus: $minutesFromCampus}';
   }
 
-  /// Getter method to return the location as a GeoPoint object
+  // Getter method to return the location as a GeoPoint object
   GeoPoint getLocation() {
-    return GeoPoint(location[0], location[1]);
+    return location;
   }
 }
