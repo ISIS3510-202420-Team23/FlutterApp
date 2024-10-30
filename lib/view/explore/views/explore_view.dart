@@ -11,6 +11,7 @@ import '../../../view_models/offer_view_model.dart';
 import '../../../view_models/property_view_model.dart';
 import '../../../view_models/user_view_model.dart';
 import '../../../view/property_details/views/property_detail_view.dart';
+import 'package:andlet/models/entities/offer_property.dart';
 
 class ExploreView extends StatefulWidget {
   final String displayName;
@@ -53,8 +54,10 @@ class _ExploreViewState extends State<ExploreView> {
 
   // Fetch initial data
   Future<void> _fetchInitialData() async {
-    await Provider.of<OfferViewModel>(context, listen: false).fetchOffersWithFilters();
-    await Provider.of<PropertyViewModel>(context, listen: false).fetchProperties();
+    await Provider.of<OfferViewModel>(context, listen: false)
+        .fetchOffersWithFilters();
+    await Provider.of<PropertyViewModel>(context, listen: false)
+        .fetchProperties();
   }
 
   // Refresh function to be called on pull-to-refresh
@@ -96,7 +99,8 @@ class _ExploreViewState extends State<ExploreView> {
       selectedMinutes = null;
       selectedDateRange = null;
     });
-    Provider.of<OfferViewModel>(context, listen: false).fetchOffersWithFilters();
+    Provider.of<OfferViewModel>(context, listen: false)
+        .fetchOffersWithFilters();
   }
 
   // Function to open the FilterModal
@@ -201,7 +205,8 @@ class _ExploreViewState extends State<ExploreView> {
                         horizontal: 15.w, vertical: 10.h), // Responsive padding
                     decoration: BoxDecoration(
                       color: const Color(0xFFB5D5FF),
-                      borderRadius: BorderRadius.circular(10.r), // Responsive border radius
+                      borderRadius: BorderRadius.circular(
+                          10.r), // Responsive border radius
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.1),
@@ -212,7 +217,9 @@ class _ExploreViewState extends State<ExploreView> {
                     ),
                     child: GestureDetector(
                       onTap: () {
-                        if (selectedPrice != null || selectedMinutes != null || selectedDateRange != null) {
+                        if (selectedPrice != null ||
+                            selectedMinutes != null ||
+                            selectedDateRange != null) {
                           _clearFilters();
                         } else {
                           _openFilterModal();
@@ -229,7 +236,9 @@ class _ExploreViewState extends State<ExploreView> {
                             ),
                           ),
                           Icon(
-                            (selectedPrice != null || selectedMinutes != null || selectedDateRange != null)
+                            (selectedPrice != null ||
+                                    selectedMinutes != null ||
+                                    selectedDateRange != null)
                                 ? Icons.close
                                 : Icons.menu,
                             color: const Color(0xFF0C356A),
@@ -243,7 +252,9 @@ class _ExploreViewState extends State<ExploreView> {
             ),
 
             // Display active filters without option to delete
-            if (selectedPrice != null || selectedMinutes != null || selectedDateRange != null)
+            if (selectedPrice != null ||
+                selectedMinutes != null ||
+                selectedDateRange != null)
               Padding(
                 padding: EdgeInsets.symmetric(
                     vertical: 5.h), // Minimized vertical padding
@@ -263,7 +274,8 @@ class _ExploreViewState extends State<ExploreView> {
                                   color:
                                       Color(0xFF0C356A)), // Custom font color
                             ),
-                            backgroundColor: const Color(0xFFB5D5FF), // Light blue color
+                            backgroundColor:
+                                const Color(0xFFB5D5FF), // Light blue color
                           ),
                         ),
                       if (selectedMinutes != null)
@@ -277,7 +289,8 @@ class _ExploreViewState extends State<ExploreView> {
                                   color:
                                       Color(0xFF0C356A)), // Custom font color
                             ),
-                            backgroundColor: const Color(0xFFB5D5FF), // Light blue color
+                            backgroundColor:
+                                const Color(0xFFB5D5FF), // Light blue color
                           ),
                         ),
                       if (selectedDateRange != null)
@@ -291,7 +304,8 @@ class _ExploreViewState extends State<ExploreView> {
                                   color:
                                       Color(0xFF0C356A)), // Custom font color
                             ),
-                            backgroundColor: const Color(0xFFB5D5FF), // Light blue color
+                            backgroundColor:
+                                const Color(0xFFB5D5FF), // Light blue color
                           ),
                         ),
                     ],
@@ -305,103 +319,131 @@ class _ExploreViewState extends State<ExploreView> {
                 onRefresh: _onRefresh,
                 child: offerViewModel.isLoading || propertyViewModel.isLoading
                     ? const Center(
-                  child: CircularProgressIndicator(
-                    color: Color(0xFF0C356A),
-                  ),
-                )
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF0C356A),
+                        ),
+                      )
                     : sortedOffers.isEmpty
-                    ? const Center(
-                  child: Text(
-                    'No properties match your filters.',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF0C356A),
-                    ),
-                  ),
-                )
-                    : ListView.builder(
-                  itemCount: sortedOffers.length,
-                  itemBuilder: (context, index) {
-                    final offerWithProperty = sortedOffers[index];
-                    final offer = offerWithProperty.offer;
-                    final property = offerWithProperty.property;
+                        ? const Center(
+                            child: Text(
+                              'No properties match your filters.',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF0C356A),
+                              ),
+                            ),
+                          )
+                        : ListView.builder(
+                            itemCount: sortedOffers.length,
+                            itemBuilder: (context, index) {
+                              final offerWithProperty = sortedOffers[index];
+                              final offer = offerWithProperty.offer;
+                              final property = offerWithProperty.property;
 
-                    return FutureBuilder<List<String>>(
-                      future: propertyViewModel.getImageUrls(property.photos),
-                      builder: (context, imageSnapshot) {
-                        if (imageSnapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(child: CircularProgressIndicator());
-                        } else if (imageSnapshot.hasError) {
-                          return const Center(child: Text('Error loading images'));
-                        }
+                              return FutureBuilder<List<String>>(
+                                future: propertyViewModel
+                                    .getImageUrls(property.photos),
+                                builder: (context, imageSnapshot) {
+                                  if (imageSnapshot.connectionState ==
+                                      ConnectionState.waiting) {
+                                    return const Center(
+                                        child: CircularProgressIndicator());
+                                  } else if (imageSnapshot.hasError) {
+                                    return const Center(
+                                        child: Text('Error loading images'));
+                                  }
 
-                        final imageUrls = imageSnapshot.data ?? [];
+                                  final imageUrls = imageSnapshot.data ?? [];
 
-                        return FutureBuilder<Map<String, dynamic>>(
-                          future: userViewModel.fetchUserById(offer.user_id),
-                          builder: (context, agentSnapshot) {
-                            if (agentSnapshot.connectionState == ConnectionState.waiting) {
-                              return const Center(child: CircularProgressIndicator());
-                            } else if (agentSnapshot.hasError || !agentSnapshot.hasData) {
-                              return const Center(child: Text('Error loading agent data'));
-                            }
+                                  return FutureBuilder<Map<String, dynamic>>(
+                                    future: userViewModel
+                                        .fetchUserById(offer.user_id),
+                                    builder: (context, agentSnapshot) {
+                                      if (agentSnapshot.connectionState ==
+                                          ConnectionState.waiting) {
+                                        return const Center(
+                                            child: CircularProgressIndicator());
+                                      } else if (agentSnapshot.hasError ||
+                                          !agentSnapshot.hasData) {
+                                        return const Center(
+                                            child: Text(
+                                                'Error loading agent data'));
+                                      }
 
-                            final agentData = agentSnapshot.data!;
-                            final agentName = agentData['name'];
-                            final agentPhoto = agentData['photo'];
-                            final agentEmail = agentData['email'];
+                                      final agentData = agentSnapshot.data!;
+                                      final agentName = agentData['name'];
+                                      final agentPhoto = agentData['photo'];
+                                      final agentEmail = agentData['email'];
 
-                            return Padding(
-                              padding: EdgeInsets.symmetric(vertical: 5.h),
-                              child: GestureDetector(
-                                onTap: () async {
-                                  // Increment the view counter
-                                  bool hasRoommates = offer.roommates > 0;
-                                  await Provider.of<OfferViewModel>(context, listen: false)
-                                      .incrementUserViewCounter(widget.userEmail, hasRoommates);
+                                      return Padding(
+                                        padding:
+                                            EdgeInsets.symmetric(vertical: 5.h),
+                                        child: GestureDetector(
+                                          onTap: () async {
+                                            // Increment the view counter
+                                            bool hasRoommates =
+                                                offer.roommates > 0;
+                                            await Provider.of<OfferViewModel>(
+                                                    context,
+                                                    listen: false)
+                                                .incrementUserViewCounter(
+                                                    widget.userEmail,
+                                                    hasRoommates);
 
-                                  AnalyticsEngine.logViewPropertyDetails(property.id);
-                                  OfferViewModel().incrementOfferViewCounter(offer.offerId);
+                                            AnalyticsEngine
+                                                .logViewPropertyDetails(
+                                                    property.id);
+                                            OfferViewModel()
+                                                .incrementOfferViewCounter(
+                                                    offer.offerId);
 
-                                  // Navigate to property details with agent info
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => PropertyDetailView(
-                                        title: property.title,
-                                        address: property.address,
-                                        imageUrls: imageUrls,
-                                        rooms: offer.num_rooms.toString(),
-                                        bathrooms: offer.num_baths.toString(),
-                                        roommates: offer.roommates.toString(),
-                                        description: property.description,
-                                        agentName: agentName,
-                                        agentEmail: agentEmail,
-                                        agentPhoto: agentPhoto,
-                                        price: offer.price_per_month.toString(),
-                                        userEmail: widget.userEmail,
-                                      ),
-                                    ),
+                                            // Navigate to property details with agent info
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    PropertyDetailView(
+                                                  title: property.title,
+                                                  address: property.address,
+                                                  imageUrls: imageUrls,
+                                                  rooms: offer.num_rooms
+                                                      .toString(),
+                                                  bathrooms: offer.num_baths
+                                                      .toString(),
+                                                  roommates: offer.roommates
+                                                      .toString(),
+                                                  description:
+                                                      property.description,
+                                                  agentName: agentName,
+                                                  agentEmail: agentEmail,
+                                                  agentPhoto: agentPhoto,
+                                                  price: offer.price_per_month
+                                                      .toString(),
+                                                  userEmail: widget.userEmail,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                          child: PropertyCard(
+                                            imageUrls: imageUrls,
+                                            title: property.title,
+                                            address: property.address,
+                                            rooms: offer.num_rooms.toString(),
+                                            baths: offer.num_baths.toString(),
+                                            roommates:
+                                                offer.roommates.toString(),
+                                            price: offer.price_per_month
+                                                .toString(),
+                                          ),
+                                        ),
+                                      );
+                                    },
                                   );
                                 },
-                                child: PropertyCard(
-                                  imageUrls: imageUrls,
-                                  title: property.title,
-                                  address: property.address,
-                                  rooms: offer.num_rooms.toString(),
-                                  baths: offer.num_baths.toString(),
-                                  roommates: offer.roommates.toString(),
-                                  price: offer.price_per_month.toString(),
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    );
-                  },
-                ),
+                              );
+                            },
+                          ),
               ),
             ),
           ],
