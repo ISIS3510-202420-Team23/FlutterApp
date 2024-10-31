@@ -52,7 +52,8 @@ Future<void> _initializeApp() async {
   await Hive.openBox<Offer>('offers');
   await Hive.openBox<OfferProperty>('offer_properties');
   await Hive.openBox<User>('user_cache');
-  await Hive.openBox<List<String>>('image_cache'); // Image URL cache
+  await Hive.openBox<List<String>>('image_cache');
+  await Hive.openBox<User>('agent_cache');
 
   // Load environment variables from .env file
   await dotenv.load(fileName: ".env");

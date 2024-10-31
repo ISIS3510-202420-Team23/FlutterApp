@@ -40,7 +40,6 @@ class _ExploreViewState extends State<ExploreView> {
   final Connectivity _connectivity = Connectivity();
   static final log = Logger('ExploreView');
 
-  // State variables to store selected filters
   double? selectedPrice;
   double? selectedMinutes;
   DateTimeRange? selectedDateRange;
@@ -77,7 +76,6 @@ class _ExploreViewState extends State<ExploreView> {
     }
   }
 
-  // Fetch initial data from Firestore
   Future<void> _fetchInitialData() async {
     final offerViewModel = Provider.of<OfferViewModel>(context, listen: false);
     final propertyViewModel = Provider.of<PropertyViewModel>(context, listen: false);
@@ -87,7 +85,6 @@ class _ExploreViewState extends State<ExploreView> {
     await propertyViewModel.fetchProperties();
   }
 
-  // Fetch user preferences for roommates from Firestore
   Future<void> _fetchUserPreferences() async {
     try {
       log.info('Fetching user roommate preferences for ${widget.userEmail}');
@@ -102,8 +99,8 @@ class _ExploreViewState extends State<ExploreView> {
     }
   }
 
-  // Apply filters on offers
-  void _applyFilters(double? price, double? minutes, DateTimeRange? dateRange) {
+  // Adjusted _applyFilters to use cached data when offline
+  void _applyFilters(double? price, double? minutes, DateTimeRange? dateRange) async {
     setState(() {
       selectedPrice = price;
       selectedMinutes = minutes;
@@ -111,14 +108,22 @@ class _ExploreViewState extends State<ExploreView> {
     });
 
     log.info('Applying filters: price=$price, minutes=$minutes, dateRange=$dateRange');
-    Provider.of<OfferViewModel>(context, listen: false).fetchOffersWithFilters(
-      maxPrice: price,
-      maxMinutes: minutes,
-      dateRange: dateRange,
-    );
+    final offerViewModel = Provider.of<OfferViewModel>(context, listen: false);
+    if (_isConnected) {
+      await offerViewModel.fetchOffersWithFilters(
+        maxPrice: price,
+        maxMinutes: minutes,
+        dateRange: dateRange,
+      );
+    } else {
+      offerViewModel.applyFiltersOnCachedData(
+        maxPrice: price,
+        maxMinutes: minutes,
+        dateRange: dateRange,
+      );
+    }
   }
 
-  // Clear all filters and refresh offers
   void _clearFilters() {
     setState(() {
       selectedPrice = null;
@@ -126,7 +131,7 @@ class _ExploreViewState extends State<ExploreView> {
       selectedDateRange = null;
     });
     log.info('Clearing filters');
-    Provider.of<OfferViewModel>(context, listen: false).fetchOffersWithFilters();
+    _applyFilters(null, null, null);
   }
 
   // Open the FilterModal
@@ -167,6 +172,53 @@ class _ExploreViewState extends State<ExploreView> {
     return offers;
   }
 
+  // Offline navigation to PropertyDetailView, using cached data
+  void _navigateToPropertyDetailView(OfferProperty offerProperty, List<String> imageUrls) async {
+    final userViewModel = Provider.of<UserViewModel>(context, listen: false);
+    final offer = offerProperty.offer;
+    final property = offerProperty.property;
+
+    User? agent;
+    if (_isConnected) {
+      try {
+        agent = await userViewModel.fetchUserById(offer.user_id);
+      } catch (e) {
+        log.warning('Failed to fetch agent data online: $e');
+      }
+    } else {
+      try {
+        agent = await Provider.of<OfferViewModel>(context, listen: false).getCachedAgent(offer.user_id);
+      } catch (e) {
+        log.warning('Failed to fetch agent data from cache: $e');
+      }
+    }
+
+    // Set fallback values if agent data is not available
+    final agentName = agent?.name ?? 'Unknown Agent';
+    final agentEmail = agent?.email ?? 'Not Available';
+    final agentPhoto = agent?.photo ?? '';
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PropertyDetailView(
+          title: property.title,
+          address: property.address,
+          imageUrls: imageUrls,
+          rooms: offer.num_rooms.toString(),
+          bathrooms: offer.num_baths.toString(),
+          roommates: offer.roommates.toString(),
+          description: property.description,
+          agentName: agentName,
+          agentEmail: agentEmail,
+          agentPhoto: agentPhoto,
+          price: offer.price_per_month.toString(),
+          userEmail: widget.userEmail,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final offerViewModel = Provider.of<OfferViewModel>(context);
@@ -174,8 +226,6 @@ class _ExploreViewState extends State<ExploreView> {
     final userViewModel = Provider.of<UserViewModel>(context);
     String firstName = widget.displayName.split(' ').first;
     final sortedOffers = _sortOffers(offerViewModel.offersWithProperties);
-
-    log.info('Building ExploreView - Connected: $_isConnected');
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -315,7 +365,7 @@ class _ExploreViewState extends State<ExploreView> {
                     final property = offerWithProperty.property;
 
                     return FutureBuilder<List<String>>(
-                      future: propertyViewModel.getImageUrls(property.photos), // get image URLs asynchronously
+                      future: propertyViewModel.getImageUrls(property.photos),
                       builder: (context, imageSnapshot) {
                         if (imageSnapshot.connectionState == ConnectionState.waiting) {
                           return const Center(child: CircularProgressIndicator());
@@ -325,9 +375,9 @@ class _ExploreViewState extends State<ExploreView> {
 
                         final imageUrls = imageSnapshot.data ?? [];
 
-                        // If offline, skip fetching agent data and use only cached info
-                        if (!_isConnected) {
-                          return PropertyCard(
+                        return GestureDetector(
+                          onTap: () => _navigateToPropertyDetailView(offerWithProperty, imageUrls),
+                          child: PropertyCard(
                             imageUrls: imageUrls,
                             title: property.title,
                             address: property.address,
@@ -335,67 +385,7 @@ class _ExploreViewState extends State<ExploreView> {
                             baths: offer.num_baths.toString(),
                             roommates: offer.roommates.toString(),
                             price: offer.price_per_month.toString(),
-                          );
-                        }
-
-                        // If online, fetch agent data as well
-                        return FutureBuilder<User?>(
-                          future: userViewModel.fetchUserById(offer.user_id),
-                          builder: (context, agentSnapshot) {
-                            if (agentSnapshot.connectionState == ConnectionState.waiting) {
-                              return const Center(child: CircularProgressIndicator());
-                            } else if (agentSnapshot.hasError || agentSnapshot.data == null) {
-                              return const Center(child: Text('Error loading agent data'));
-                            }
-
-                            final agent = agentSnapshot.data!;
-                            final agentName = agent.name.isNotEmpty ? agent.name : 'Unknown Agent';
-                            final agentPhoto = agent.photo.isNotEmpty ? agent.photo : '';
-                            final agentEmail = agent.email.isNotEmpty ? agent.email : 'Not Available';
-
-                            return Padding(
-                              padding: EdgeInsets.symmetric(vertical: 5.h),
-                              child: GestureDetector(
-                                onTap: () async {
-                                  bool hasRoommates = offer.roommates > 0;
-                                  await Provider.of<OfferViewModel>(context, listen: false)
-                                      .incrementUserViewCounter(widget.userEmail, hasRoommates);
-
-                                  AnalyticsEngine.logViewPropertyDetails(property.id);
-                                  OfferViewModel().incrementOfferViewCounter(offer.offerId);
-
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => PropertyDetailView(
-                                        title: property.title,
-                                        address: property.address,
-                                        imageUrls: imageUrls,
-                                        rooms: offer.num_rooms.toString(),
-                                        bathrooms: offer.num_baths.toString(),
-                                        roommates: offer.roommates.toString(),
-                                        description: property.description,
-                                        agentName: agentName,
-                                        agentEmail: agentEmail,
-                                        agentPhoto: agentPhoto,
-                                        price: offer.price_per_month.toString(),
-                                        userEmail: widget.userEmail,
-                                      ),
-                                    ),
-                                  );
-                                },
-                                child: PropertyCard(
-                                  imageUrls: imageUrls,
-                                  title: property.title,
-                                  address: property.address,
-                                  rooms: offer.num_rooms.toString(),
-                                  baths: offer.num_baths.toString(),
-                                  roommates: offer.roommates.toString(),
-                                  price: offer.price_per_month.toString(),
-                                ),
-                              ),
-                            );
-                          },
+                          ),
                         );
                       },
                     );
@@ -429,7 +419,6 @@ class _ExploreViewState extends State<ExploreView> {
     );
   }
 
-  // Show snackbar for offline refresh restriction
   void _showOfflineSnackbar() {
     log.warning('User attempted to refresh while offline');
     ScaffoldMessenger.of(context).showSnackBar(

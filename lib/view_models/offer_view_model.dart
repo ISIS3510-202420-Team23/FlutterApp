@@ -6,6 +6,7 @@ import 'package:logging/logging.dart';
 import '../connectivity/connectivity_service.dart';
 import '../models/entities/offer.dart';
 import '../models/entities/property.dart';
+import '../models/entities/user.dart';
 
 class OfferViewModel extends ChangeNotifier {
   List<OfferProperty> _offersWithProperties = [];
@@ -17,6 +18,7 @@ class OfferViewModel extends ChangeNotifier {
   final CollectionReference _offersRef = FirebaseFirestore.instance.collection('offers');
   final CollectionReference _propertiesRef = FirebaseFirestore.instance.collection('properties');
   final CollectionReference _userViewsRef = FirebaseFirestore.instance.collection('user_views');
+  final CollectionReference _usersRef = FirebaseFirestore.instance.collection('users'); // For agents
   final ConnectivityService _connectivityService = ConnectivityService();
 
   List<OfferProperty> get offersWithProperties => _offersWithProperties;
@@ -82,6 +84,37 @@ class OfferViewModel extends ChangeNotifier {
     }
   }
 
+  /// Fetch and cache agent data when online
+  Future<void> fetchAgentAndCache(String userId) async {
+    final box = Hive.box<User>('agent_cache');
+    if (!box.containsKey(userId)) { // Only fetch if not already in cache
+      try {
+        DocumentSnapshot agentSnapshot = await _usersRef.doc(userId).get();
+        if (agentSnapshot.exists) {
+          User agent = User(
+            email: agentSnapshot['email'] ?? 'Unknown Email',
+            name: agentSnapshot['name'] ?? 'Unknown Agent',
+            phone: agentSnapshot['phone'] ?? 0,
+            photo: agentSnapshot['photo'] ?? '',
+            is_andes: agentSnapshot['is_andes'] ?? false,
+            type_user: agentSnapshot['type_user'] ?? '',
+            favorite_offers: (agentSnapshot['favorite_offers'] as List<dynamic>?)?.cast<int>() ?? [],
+          );
+          await box.put(userId, agent); // Cache the fetched agent
+        }
+      } catch (e) {
+        log.shout('Error fetching and caching agent data: $e');
+      }
+    }
+  }
+
+  /// Retrieve cached agent data when offline
+  Future<User?> getCachedAgent(String userId) async {
+    final box = Hive.box<User>('agent_cache');
+    await box.clear();
+    return box.get(userId);
+  }
+
   /// Fetch all offers and associated properties, then apply filters
   Future<void> fetchOffersWithFilters({
     double? minPrice,
@@ -140,6 +173,8 @@ class OfferViewModel extends ChangeNotifier {
 
                 if (_applyFilters(offer, property, minPrice, maxPrice, maxMinutes, dateRange)) {
                   tempOffersWithProperties.add(OfferProperty(offer: offer, property: property));
+                  // Cache agent data if online
+                  fetchAgentAndCache(offer.user_id);
                 }
               }
             }
@@ -173,6 +208,30 @@ class OfferViewModel extends ChangeNotifier {
       log.warning('No cached offers available');
       _offersWithProperties = [];
     }
+    notifyListeners();
+  }
+
+  /// Apply filters on cached data when offline
+  void applyFiltersOnCachedData({
+    double? minPrice,
+    double? maxPrice,
+    double? maxMinutes,
+    DateTimeRange? dateRange,
+  }) {
+    final box = Hive.box<OfferProperty>('offer_properties');
+    _offersWithProperties = box.values
+        .where((offerProperty) =>
+        _applyFilters(
+          offerProperty.offer,
+          offerProperty.property,
+          minPrice,
+          maxPrice,
+          maxMinutes,
+          dateRange,
+        ))
+        .toList();
+
+    log.info('Applied filters on cached data, found ${_offersWithProperties.length} matching offers');
     notifyListeners();
   }
 
