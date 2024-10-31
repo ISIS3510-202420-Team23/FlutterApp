@@ -1,14 +1,18 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dio/dio.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:logging/logging.dart';
+import 'package:path_provider/path_provider.dart';
 import '../connectivity/connectivity_service.dart';
 import '../models/entities/property.dart';
 
 class PropertyViewModel extends ChangeNotifier {
   List<Property> _properties = [];
   bool _isLoading = false;
+
+  final Dio _dio = Dio();
 
   static final log = Logger('PropertyViewModel');
   final FirebaseStorage _storage = FirebaseStorage.instance;
@@ -51,6 +55,27 @@ class PropertyViewModel extends ChangeNotifier {
           }).toList();
         }).toList();
 
+        // Download image URLs for offline use
+        for (var property in _properties) {
+          for (int i = 0; i < property.photos.length; i++) {
+            String filename = property.photos[i]; // e.g., 'apartment_image.jpg'
+            try {
+              // Get the download URL from Firebase Storage
+              String imageUrl =
+                  await _storage.ref('properties/$filename').getDownloadURL();
+
+              // Download and save the image to local storage
+              final localPath = await _downloadAndSaveImage(imageUrl, filename);
+
+              // Update the property photo URL to the local path
+              property.photos[i] = localPath;
+            } catch (e) {
+              log.shout(
+                  'Error fetching and downloading image for $filename: $e');
+            }
+          }
+        }
+
         // Store the fetched properties in Hive for offline use
         final box = Hive.box<Property>('properties');
         await box.clear();
@@ -79,6 +104,23 @@ class PropertyViewModel extends ChangeNotifier {
     } finally {
       _setLoading(false);
       notifyListeners();
+    }
+  }
+
+  /// Method to download and save images to local storage
+  Future<String> _downloadAndSaveImage(String url, String fileName) async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final filePath = '${directory.path}/$fileName';
+      final response = await _dio.download(url, filePath);
+
+      if (response.statusCode == 200) {
+        return filePath;
+      } else {
+        throw Exception('Failed to download image');
+      }
+    } catch (e) {
+      throw Exception('Error downloading image: $e');
     }
   }
 
