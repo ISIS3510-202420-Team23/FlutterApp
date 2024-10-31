@@ -1,37 +1,25 @@
-import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:http/http.dart' as http;
+import 'dart:io';
 
 class ConnectivityService {
   final Connectivity _connectivity = Connectivity();
 
-  // Check for actual internet access
-  Future<bool> hasInternetAccess() async {
-    try {
-      final result = await http.get(Uri.parse('https://google.com')).timeout(
-        const Duration(seconds: 10),
-      );
-      return result.statusCode == 200;
-    } catch (_) {
+  Future<bool> isConnected() async {
+    var connectivityResult = await _connectivity.checkConnectivity();
+    if (connectivityResult == ConnectivityResult.none) {
       return false;
     }
+
+    // Check actual internet access by trying to reach google.com
+    return await _hasInternetAccess();
   }
 
-  Stream<bool> get onConnectivityChanged async* {
-    await for (final result in _connectivity.onConnectivityChanged) {
-      if (result != ConnectivityResult.none) {
-        yield await hasInternetAccess();
-      } else {
-        yield false;
-      }
+  Future<bool> _hasInternetAccess() async {
+    try {
+      final result = await InternetAddress.lookup('google.com');
+      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+    } on SocketException catch (_) {
+      return false;
     }
-  }
-
-  Future<bool> isConnected() async {
-    final result = await _connectivity.checkConnectivity();
-    if (result != ConnectivityResult.none) {
-      return await hasInternetAccess();
-    }
-    return false;
   }
 }

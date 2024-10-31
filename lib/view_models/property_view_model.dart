@@ -12,127 +12,118 @@ class PropertyViewModel extends ChangeNotifier {
 
   static final log = Logger('PropertyViewModel');
   final FirebaseStorage _storage = FirebaseStorage.instance;
-
-  final CollectionReference _propertiesRef =
-  FirebaseFirestore.instance.collection('properties');
+  final CollectionReference _propertiesRef = FirebaseFirestore.instance.collection('properties');
   final ConnectivityService _connectivityService = ConnectivityService();
+
   List<Property> get properties => _properties;
   bool get isLoading => _isLoading;
 
-  /// Method to fetch properties from Firestore with nested fields
+  /// Fetch properties from Firestore or load from cache if offline
   Future<void> fetchProperties() async {
     _setLoading(true);
 
     try {
       bool isConnected = await _connectivityService.isConnected();
       if (isConnected) {
-        // Fetch properties from Firestore if online
+        log.info('Fetching properties from Firestore...');
         QuerySnapshot snapshot = await _propertiesRef.get();
-        _properties = snapshot.docs.expand((doc) {
-          final propertyData = doc.data() as Map<String, dynamic>;
-          return propertyData.entries.map((entry) {
-            final id = entry.key;
-            final details = entry.value as Map<String, dynamic>;
-            GeoPoint location = details['location'] is GeoPoint
-                ? details['location'] as GeoPoint
-                : const GeoPoint(0, 0);
-            return Property(
-              id: int.tryParse(id) ?? -1,
-              address: details['address'] ?? '',
-              complex_name: details['complex_name'] ?? '',
-              description: details['description'] ?? '',
-              location: location,
-              photos: List<String>.from(details['photos'] ?? []),
-              title: details['title'] ?? '',
-              minutesFromCampus: details['minutes_from_campus'] != null
-                  ? (details['minutes_from_campus'] as num).toDouble()
-                  : 0.0,
-            );
-          }).toList();
-        }).toList();
+        _properties = _mapSnapshotToProperties(snapshot);
 
-        // Store the fetched properties in Hive for offline use
+        // Store properties in Hive for offline access
         final box = Hive.box<Property>('properties');
         await box.clear();
         await box.addAll(_properties);
       } else {
-        // Load properties from Hive when offline
+        log.warning('Offline - Loading properties from cache...');
         loadFromCache();
       }
     } catch (e, stacktrace) {
       log.shout('Error fetching properties: $e\nStacktrace: $stacktrace');
-      loadFromCache(); // Fall back to cache in case of errors
+      loadFromCache();
     } finally {
       _setLoading(false);
     }
   }
 
-  /// Load properties from cache (Hive) if offline or in case of error
+  /// Load properties from cache (Hive) when offline or in case of error
   void loadFromCache() {
     final box = Hive.box<Property>('properties');
     if (box.isNotEmpty) {
       _properties = box.values.toList();
+      log.info('Loaded ${_properties.length} properties from cache');
     } else {
-      log.warning('No cached properties found for offline mode.');
-      _properties = []; // Clear list if no cache available
+      log.warning('No cached properties available');
+      _properties = [];
     }
     notifyListeners();
   }
 
-  // Helper method to fetch image URLs from Firebase Storage
+  /// Helper method to fetch image URLs from Firebase Storage for a list of property images
   Future<List<String>> getImageUrls(List<String> imagePaths) async {
+    final box = Hive.box<List<String>>('image_cache');
+    final cachedUrls = box.get(imagePaths.join(',')); // Key as a joined path string
+    bool isConnected = await _connectivityService.isConnected();
+
+    // Use cached URLs if offline
+    if (!isConnected && cachedUrls != null) {
+      log.info('Loading cached image URLs for paths: $imagePaths');
+      return cachedUrls;
+    }
+
+    // Fetch URLs from Firebase Storage if online
     List<String> imageUrls = [];
     for (String path in imagePaths) {
       try {
-        String downloadUrl =
-        await _storage.ref('properties/$path').getDownloadURL();
+        String downloadUrl = await _storage.ref('properties/$path').getDownloadURL();
         imageUrls.add(downloadUrl);
       } catch (e) {
-        log.shout('Error fetching image URL for $path: $e');
+        log.severe('Error fetching image URL for $path: $e');
       }
     }
+
+    // Cache the fetched URLs for offline usage
+    if (imageUrls.isNotEmpty) {
+      await box.put(imagePaths.join(','), imageUrls);
+      log.info('Caching image URLs for paths: $imagePaths');
+    }
+
     return imageUrls;
   }
 
-  /// Method to get a property by its ID
-  Future<Property?> getPropertyById(int id) async {
-    try {
-      // Fetch all documents in the collection
-      QuerySnapshot snapshot = await _propertiesRef.get();
-      // Iterate through each document to find the property with the matching ID
-      for (var doc in snapshot.docs) {
-        final propertyData = doc.data() as Map<String, dynamic>;
 
-        // Check if the document contains the property with the given ID
-        if (propertyData.containsKey(id.toString())) {
-          final details = propertyData[id.toString()] as Map<String, dynamic>;
+  /// Map Firestore snapshot to a list of Property models
+  List<Property> _mapSnapshotToProperties(QuerySnapshot snapshot) {
+    List<Property> properties = [];
 
-          // Return the property mapped from the details
-          return Property(
-            id: id, // Use the int ID here
-            address: details['address'] ?? '',
-            complex_name: details['complex_name'] ?? '',
-            description: details['description'] ?? '',
-            location: details['location'] ?? const GeoPoint(0, 0),
-            photos: List<String>.from(details['photos'] ?? []),
-            title: details['title'] ?? '',
-            minutesFromCampus:
-            (details['minutes_from_campus'] as num?)?.toDouble() ?? 0.0,
-          );
-        }
-      }
+    for (var doc in snapshot.docs) {
+      final propertyData = doc.data() as Map<String, dynamic>;
+      properties.addAll(propertyData.entries.map((entry) {
+        final id = int.tryParse(entry.key) ?? -1;
+        final details = entry.value as Map<String, dynamic>;
 
-      // If no property with the given ID was found
-      log.info('Property with ID $id not found');
-    } catch (e, stacktrace) {
-      log.shout(
-          'Error fetching property by ID $id: $e\nStacktrace: $stacktrace');
+        GeoPoint location = details['location'] is GeoPoint
+            ? details['location'] as GeoPoint
+            : const GeoPoint(0, 0);
+
+        return Property(
+          id: id,
+          address: details['address'] ?? '',
+          complex_name: details['complex_name'] ?? '',
+          description: details['description'] ?? '',
+          location: location,
+          photos: List<String>.from(details['photos'] ?? []),
+          title: details['title'] ?? '',
+          minutesFromCampus: details['minutes_from_campus'] != null
+              ? (details['minutes_from_campus'] as num).toDouble()
+              : 0.0,
+        );
+      }));
     }
 
-    return null;
+    return properties;
   }
 
-  /// Method to update loading state
+  /// Method to update loading state and notify listeners
   void _setLoading(bool loading) {
     _isLoading = loading;
     notifyListeners();

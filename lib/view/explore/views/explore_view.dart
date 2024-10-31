@@ -7,12 +7,14 @@ import 'package:provider/provider.dart';
 import '../../../connectivity/connectivity_service.dart';
 import 'filter_modal.dart';
 import 'property_card.dart';
-import '../../../cas/user_last_contact_landlord.dart';
 import '../../../view_models/offer_view_model.dart';
 import '../../../view_models/property_view_model.dart';
 import '../../../view_models/user_view_model.dart';
 import '../../../view/property_details/views/property_detail_view.dart';
 import 'package:andlet/models/entities/offer_property.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:andlet/models/entities/user.dart';
+import 'package:logging/logging.dart';
 
 class ExploreView extends StatefulWidget {
   final String displayName;
@@ -32,12 +34,13 @@ class ExploreView extends StatefulWidget {
 
 class _ExploreViewState extends State<ExploreView> {
   int currentPageIndex = 0;
-  bool showShakeAlert = false;
   bool? userRoommatePreference;
-  bool _isConnected = true; // Track connectivity status
-  bool _hasLoadedFromCache = false; // Flag to indicate if data was loaded from cache
-  bool _dataLoadedFromCache = false; // Flag for debugging source of data
+  bool _isConnected = true;
+  final ConnectivityService _connectivityService = ConnectivityService();
+  final Connectivity _connectivity = Connectivity();
+  static final log = Logger('ExploreView');
 
+  // State variables to store selected filters
   double? selectedPrice;
   double? selectedMinutes;
   DateTimeRange? selectedDateRange;
@@ -45,85 +48,69 @@ class _ExploreViewState extends State<ExploreView> {
   @override
   void initState() {
     super.initState();
-    _initializeDataLoad();
-    ConnectivityService().onConnectivityChanged.listen((isConnected) {
-      setState(() {
-        _isConnected = isConnected;
-        if (_isConnected && !_hasLoadedFromCache) {
-          _fetchInitialData();
-          _dataLoadedFromCache = false;
-        } else if (!_isConnected) {
-          _loadFromCache();
-          _hasLoadedFromCache = true;
-          _dataLoadedFromCache = true;
-        }
-      });
-    });
-    fetchUserPreferences();
-    NotificationService notificationService = NotificationService();
-    notificationService.checkLastContactAction(widget.userEmail);
+    _initializeConnectivity();
+    _fetchUserPreferences();
   }
 
-  void _initializeDataLoad() async {
-    _isConnected = await ConnectivityService().isConnected();
+  void _initializeConnectivity() {
+    log.info('Initializing connectivity check...');
+    _connectivity.onConnectivityChanged.listen((ConnectivityResult result) {
+      log.info('Connectivity changed: $result');
+      _updateConnectionStatus(result);
+    });
+  }
+
+  void _updateConnectionStatus(ConnectivityResult result) async {
+    bool isConnected = result != ConnectivityResult.none && await _connectivityService.isConnected();
+    log.info('Updated connectivity status: $isConnected');
+    setState(() {
+      _isConnected = isConnected;
+    });
+
     if (_isConnected) {
-      _fetchInitialData();
+      log.info('Online - Fetching initial data from Firestore');
+      await _fetchInitialData();
     } else {
-      _loadFromCache();
-      _hasLoadedFromCache = true;
-      _dataLoadedFromCache = true;
+      log.warning('Offline - Loading cached data');
+      Provider.of<OfferViewModel>(context, listen: false).loadFromCache();
+      Provider.of<PropertyViewModel>(context, listen: false).loadFromCache();
     }
   }
 
+  // Fetch initial data from Firestore
   Future<void> _fetchInitialData() async {
     final offerViewModel = Provider.of<OfferViewModel>(context, listen: false);
     final propertyViewModel = Provider.of<PropertyViewModel>(context, listen: false);
+
+    log.info('Fetching offers and properties from Firestore');
+    await offerViewModel.fetchOffersWithFilters();
+    await propertyViewModel.fetchProperties();
+  }
+
+  // Fetch user preferences for roommates from Firestore
+  Future<void> _fetchUserPreferences() async {
     try {
-      await offerViewModel.fetchOffersWithFilters();
-      await propertyViewModel.fetchProperties();
-      _hasLoadedFromCache = false;
-      _dataLoadedFromCache = false;
-    } catch (e) {
-      _hasLoadedFromCache = true;
-      _dataLoadedFromCache = true;
-    }
-  }
-
-  void _loadFromCache() {
-    final offerViewModel = Provider.of<OfferViewModel>(context, listen: false);
-    final propertyViewModel = Provider.of<PropertyViewModel>(context, listen: false);
-    offerViewModel.loadFromCache();
-    propertyViewModel.loadFromCache();
-  }
-
-  Future<void> _onRefresh() async {
-    _isConnected = await ConnectivityService().isConnected();
-    if (_isConnected) {
-      await _fetchInitialData();
-    } else {
-      _loadFromCache();
-      _dataLoadedFromCache = true;
-    }
-  }
-
-  Future<void> fetchUserPreferences() async {
-    try {
+      log.info('Fetching user roommate preferences for ${widget.userEmail}');
       var userPreferences = await Provider.of<OfferViewModel>(context, listen: false)
           .fetchUserRoommatePreferences(widget.userEmail);
       setState(() {
         userRoommatePreference = userPreferences;
       });
+      log.info('User roommate preference: $userRoommatePreference');
     } catch (e) {
-      // Handle error
+      log.severe('Error fetching user preferences: $e');
     }
   }
 
+  // Apply filters on offers
   void _applyFilters(double? price, double? minutes, DateTimeRange? dateRange) {
     setState(() {
       selectedPrice = price;
       selectedMinutes = minutes;
       selectedDateRange = dateRange;
     });
+
+    log.info('Applying filters: price=$price, minutes=$minutes, dateRange=$dateRange');
     Provider.of<OfferViewModel>(context, listen: false).fetchOffersWithFilters(
       maxPrice: price,
       maxMinutes: minutes,
@@ -131,15 +118,18 @@ class _ExploreViewState extends State<ExploreView> {
     );
   }
 
+  // Clear all filters and refresh offers
   void _clearFilters() {
     setState(() {
       selectedPrice = null;
       selectedMinutes = null;
       selectedDateRange = null;
     });
+    log.info('Clearing filters');
     Provider.of<OfferViewModel>(context, listen: false).fetchOffersWithFilters();
   }
 
+  // Open the FilterModal
   void _openFilterModal() {
     AnalyticsEngine.logFilterButtonPressed();
     UserActionsViewModel().addUserAction(widget.userEmail, 'filter');
@@ -155,16 +145,16 @@ class _ExploreViewState extends State<ExploreView> {
           initialPrice: selectedPrice,
           initialMinutes: selectedMinutes,
           initialDateRange: selectedDateRange,
-          onApply: (price, minutes, dateRange) {
-            _applyFilters(price, minutes, dateRange);
-          },
+          onApply: _applyFilters,
         ),
       ),
     );
   }
 
+  // Sort offers based on roommate preference
   List<OfferProperty> _sortOffers(List<OfferProperty> offers) {
     if (userRoommatePreference == null) return offers;
+
     offers.sort((a, b) {
       if (userRoommatePreference == true) {
         return b.offer.roommates.compareTo(a.offer.roommates);
@@ -172,6 +162,8 @@ class _ExploreViewState extends State<ExploreView> {
         return a.offer.roommates.compareTo(b.offer.roommates);
       }
     });
+
+    log.info('Offers sorted based on roommate preference: $userRoommatePreference');
     return offers;
   }
 
@@ -183,13 +175,15 @@ class _ExploreViewState extends State<ExploreView> {
     String firstName = widget.displayName.split(' ').first;
     final sortedOffers = _sortOffers(offerViewModel.offersWithProperties);
 
+    log.info('Building ExploreView - Connected: $_isConnected');
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Padding(
         padding: EdgeInsets.all(25.w),
         child: Column(
           children: [
-            SizedBox(height: 25.h),
+            SizedBox(height: 2.h),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -219,44 +213,26 @@ class _ExploreViewState extends State<ExploreView> {
                 CircleAvatar(
                   backgroundImage: widget.photoUrl.isNotEmpty
                       ? NetworkImage(widget.photoUrl)
-                      : const AssetImage('lib/assets/personaicono.png')
-                  as ImageProvider,
+                      : const AssetImage('lib/assets/personaicono.png') as ImageProvider,
                   radius: 35.r,
                 ),
               ],
             ),
             SizedBox(height: 20.h),
-
-            // Offline banner and cache loading debug info
             if (!_isConnected)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Container(
-                  color: Colors.redAccent,
-                  padding: const EdgeInsets.all(8.0),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.warning, color: Colors.white),
-                      const SizedBox(width: 8.0),
-                      Expanded(
-                        child: Text(
-                          'No Internet Connection, offers will not be updated',
-                          style: TextStyle(color: Colors.white, fontSize: 14.sp),
-                        ),
-                      ),
-                    ],
-                  ),
+              Container(
+                color: Colors.redAccent,
+                padding: const EdgeInsets.all(8.0),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning, color: Colors.white),
+                    const SizedBox(width: 8.0),
+                    Expanded(child: Text('No Internet Connection, offers will not be updated', style: TextStyle(color: Colors.white, fontSize: 14.sp))),
+                  ],
                 ),
               ),
-            if (_dataLoadedFromCache)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8.0),
-                child: Text(
-                  'Displaying cached data',
-                  style: TextStyle(color: Colors.orange, fontSize: 16.sp),
-                ),
-              ),
-
+            if (!_isConnected)
+              SizedBox(height: 20.h),
             Row(
               children: [
                 Expanded(
@@ -285,16 +261,9 @@ class _ExploreViewState extends State<ExploreView> {
                         children: [
                           const Icon(Icons.search, color: Color(0xFF0C356A)),
                           SizedBox(width: 10.w),
-                          const Expanded(
-                            child: Text(
-                              'Search for a place...',
-                              style: TextStyle(color: Color(0xFF0C356A)),
-                            ),
-                          ),
+                          const Expanded(child: Text('Search for a place...', style: TextStyle(color: Color(0xFF0C356A)))),
                           Icon(
-                            (selectedPrice != null || selectedMinutes != null || selectedDateRange != null)
-                                ? Icons.close
-                                : Icons.menu,
+                            (selectedPrice != null || selectedMinutes != null || selectedDateRange != null) ? Icons.close : Icons.menu,
                             color: const Color(0xFF0C356A),
                           ),
                         ],
@@ -304,7 +273,6 @@ class _ExploreViewState extends State<ExploreView> {
                 ),
               ],
             ),
-
             if (selectedPrice != null || selectedMinutes != null || selectedDateRange != null)
               Padding(
                 padding: EdgeInsets.symmetric(vertical: 5.h),
@@ -315,33 +283,19 @@ class _ExploreViewState extends State<ExploreView> {
                       if (selectedPrice != null)
                         Padding(
                           padding: const EdgeInsets.only(right: 8.0),
-                          child: Chip(
-                            label: Text(
-                              'Price: \$${selectedPrice!.toInt()}',
-                              style: const TextStyle(color: Color(0xFF0C356A)),
-                            ),
-                            backgroundColor: const Color(0xFFB5D5FF),
-                          ),
+                          child: Chip(label: Text('Price: \$${selectedPrice!.toInt()}', style: const TextStyle(color: Color(0xFF0C356A))), backgroundColor: const Color(0xFFB5D5FF)),
                         ),
                       if (selectedMinutes != null)
                         Padding(
                           padding: const EdgeInsets.only(right: 8.0),
-                          child: Chip(
-                            label: Text(
-                              'Minutes: ${selectedMinutes!.toInt()}',
-                              style: const TextStyle(color: Color(0xFF0C356A)),
-                            ),
-                            backgroundColor: const Color(0xFFB5D5FF),
-                          ),
+                          child: Chip(label: Text('Minutes: ${selectedMinutes!.toInt()}', style: const TextStyle(color: Color(0xFF0C356A))), backgroundColor: const Color(0xFFB5D5FF)),
                         ),
                       if (selectedDateRange != null)
                         Padding(
                           padding: const EdgeInsets.only(right: 8.0),
                           child: Chip(
-                            label: Text(
-                              'Dates: ${DateFormat('MM/dd').format(selectedDateRange!.start)} - ${DateFormat('MM/dd').format(selectedDateRange!.end)}',
-                              style: const TextStyle(color: Color(0xFF0C356A)),
-                            ),
+                            label: Text('Dates: ${DateFormat('MM/dd').format(selectedDateRange!.start)} - ${DateFormat('MM/dd').format(selectedDateRange!.end)}',
+                                style: const TextStyle(color: Color(0xFF0C356A))),
                             backgroundColor: const Color(0xFFB5D5FF),
                           ),
                         ),
@@ -351,11 +305,103 @@ class _ExploreViewState extends State<ExploreView> {
               ),
             SizedBox(height: 10.h),
             Expanded(
-              child: _isConnected
-                  ? RefreshIndicator(
-                  onRefresh: _onRefresh,
-                  child: _buildOfferList(context, sortedOffers))
-                  : _buildOfferList(context, sortedOffers),
+              child: RefreshIndicator(
+                onRefresh: _isConnected ? _fetchInitialData : () async => _showOfflineSnackbar(),
+                child: sortedOffers.isEmpty
+                    ? const Center(child: Text('No properties match your filters.', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF0C356A))))
+                    : ListView(
+                  children: sortedOffers.map((offerWithProperty) {
+                    final offer = offerWithProperty.offer;
+                    final property = offerWithProperty.property;
+
+                    return FutureBuilder<List<String>>(
+                      future: propertyViewModel.getImageUrls(property.photos), // get image URLs asynchronously
+                      builder: (context, imageSnapshot) {
+                        if (imageSnapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator());
+                        } else if (imageSnapshot.hasError || imageSnapshot.data == null) {
+                          return const Center(child: Text('Error loading images'));
+                        }
+
+                        final imageUrls = imageSnapshot.data ?? [];
+
+                        // If offline, skip fetching agent data and use only cached info
+                        if (!_isConnected) {
+                          return PropertyCard(
+                            imageUrls: imageUrls,
+                            title: property.title,
+                            address: property.address,
+                            rooms: offer.num_rooms.toString(),
+                            baths: offer.num_baths.toString(),
+                            roommates: offer.roommates.toString(),
+                            price: offer.price_per_month.toString(),
+                          );
+                        }
+
+                        // If online, fetch agent data as well
+                        return FutureBuilder<User?>(
+                          future: userViewModel.fetchUserById(offer.user_id),
+                          builder: (context, agentSnapshot) {
+                            if (agentSnapshot.connectionState == ConnectionState.waiting) {
+                              return const Center(child: CircularProgressIndicator());
+                            } else if (agentSnapshot.hasError || agentSnapshot.data == null) {
+                              return const Center(child: Text('Error loading agent data'));
+                            }
+
+                            final agent = agentSnapshot.data!;
+                            final agentName = agent.name.isNotEmpty ? agent.name : 'Unknown Agent';
+                            final agentPhoto = agent.photo.isNotEmpty ? agent.photo : '';
+                            final agentEmail = agent.email.isNotEmpty ? agent.email : 'Not Available';
+
+                            return Padding(
+                              padding: EdgeInsets.symmetric(vertical: 5.h),
+                              child: GestureDetector(
+                                onTap: () async {
+                                  bool hasRoommates = offer.roommates > 0;
+                                  await Provider.of<OfferViewModel>(context, listen: false)
+                                      .incrementUserViewCounter(widget.userEmail, hasRoommates);
+
+                                  AnalyticsEngine.logViewPropertyDetails(property.id);
+                                  OfferViewModel().incrementOfferViewCounter(offer.offerId);
+
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => PropertyDetailView(
+                                        title: property.title,
+                                        address: property.address,
+                                        imageUrls: imageUrls,
+                                        rooms: offer.num_rooms.toString(),
+                                        bathrooms: offer.num_baths.toString(),
+                                        roommates: offer.roommates.toString(),
+                                        description: property.description,
+                                        agentName: agentName,
+                                        agentEmail: agentEmail,
+                                        agentPhoto: agentPhoto,
+                                        price: offer.price_per_month.toString(),
+                                        userEmail: widget.userEmail,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                child: PropertyCard(
+                                  imageUrls: imageUrls,
+                                  title: property.title,
+                                  address: property.address,
+                                  rooms: offer.num_rooms.toString(),
+                                  baths: offer.num_baths.toString(),
+                                  roommates: offer.roommates.toString(),
+                                  price: offer.price_per_month.toString(),
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
             ),
           ],
         ),
@@ -383,103 +429,11 @@ class _ExploreViewState extends State<ExploreView> {
     );
   }
 
-  Widget _buildOfferList(BuildContext context, List<OfferProperty> sortedOffers) {
-    final offerViewModel = Provider.of<OfferViewModel>(context);
-    final propertyViewModel = Provider.of<PropertyViewModel>(context);
-    final userViewModel = Provider.of<UserViewModel>(context);
-
-    if (offerViewModel.isLoading || propertyViewModel.isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: Color(0xFF0C356A)),
-      );
-    } else if (sortedOffers.isEmpty) {
-      return const Center(
-        child: Text(
-          'No properties match your filters.',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF0C356A)),
-        ),
-      );
-    }
-
-    return ListView.builder(
-      itemCount: sortedOffers.length,
-      itemBuilder: (context, index) {
-        final offerWithProperty = sortedOffers[index];
-        final offer = offerWithProperty.offer;
-        final property = offerWithProperty.property;
-
-        return FutureBuilder<List<String>>(
-          future: propertyViewModel.getImageUrls(property.photos),
-          builder: (context, imageSnapshot) {
-            if (imageSnapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            } else if (imageSnapshot.hasError) {
-              return const Center(child: Text('Error loading images'));
-            }
-
-            final imageUrls = imageSnapshot.data ?? [];
-
-            return FutureBuilder<Map<String, dynamic>>(
-              future: userViewModel.fetchUserById(offer.user_id),
-              builder: (context, agentSnapshot) {
-                if (agentSnapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                } else if (agentSnapshot.hasError || !agentSnapshot.hasData) {
-                  return const Center(child: Text('Error loading agent data'));
-                }
-
-                final agentData = agentSnapshot.data!;
-                final agentName = agentData['name'];
-                final agentPhoto = agentData['photo'];
-                final agentEmail = agentData['email'];
-
-                return Padding(
-                  padding: EdgeInsets.symmetric(vertical: 5.h),
-                  child: GestureDetector(
-                    onTap: () async {
-                      bool hasRoommates = offer.roommates > 0;
-                      await Provider.of<OfferViewModel>(context, listen: false)
-                          .incrementUserViewCounter(widget.userEmail, hasRoommates);
-
-                      AnalyticsEngine.logViewPropertyDetails(property.id);
-                      OfferViewModel().incrementOfferViewCounter(offer.offerId);
-
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => PropertyDetailView(
-                            title: property.title,
-                            address: property.address,
-                            imageUrls: imageUrls,
-                            rooms: offer.num_rooms.toString(),
-                            bathrooms: offer.num_baths.toString(),
-                            roommates: offer.roommates.toString(),
-                            description: property.description,
-                            agentName: agentName,
-                            agentEmail: agentEmail,
-                            agentPhoto: agentPhoto,
-                            price: offer.price_per_month.toString(),
-                            userEmail: widget.userEmail,
-                          ),
-                        ),
-                      );
-                    },
-                    child: PropertyCard(
-                      imageUrls: imageUrls,
-                      title: property.title,
-                      address: property.address,
-                      rooms: offer.num_rooms.toString(),
-                      baths: offer.num_baths.toString(),
-                      roommates: offer.roommates.toString(),
-                      price: offer.price_per_month.toString(),
-                    ),
-                  ),
-                );
-              },
-            );
-          },
-        );
-      },
+  // Show snackbar for offline refresh restriction
+  void _showOfflineSnackbar() {
+    log.warning('User attempted to refresh while offline');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('You are offline. Refresh is disabled.', style: TextStyle(color: Colors.white)), backgroundColor: Colors.redAccent),
     );
   }
 }

@@ -42,12 +42,9 @@ class OfferViewModel extends ChangeNotifier {
   }
 
   Future<void> incrementUserViewCounter(String userEmail, bool hasRoommates) async {
-    final userViewsRef = FirebaseFirestore.instance.collection('user_views');
-
     try {
-      DocumentReference docRef = userViewsRef.doc(userEmail);
+      DocumentReference docRef = _userViewsRef.doc(userEmail);
 
-      // Update the respective counter based on whether the property has roommates
       if (hasRoommates) {
         await docRef.update({'roommates_views': FieldValue.increment(1)});
       } else {
@@ -60,7 +57,7 @@ class OfferViewModel extends ChangeNotifier {
 
   /// Increment the view counter for a specific offer within a single document
   Future<void> incrementOfferViewCounter(int offerId) async {
-    final offerRef = FirebaseFirestore.instance.collection('offers').doc('E2amoJzmIbhtLq65ScpY');
+    final offerRef = _offersRef.doc('E2amoJzmIbhtLq65ScpY'); // Reference the single document
 
     try {
       DocumentSnapshot offerDoc = await offerRef.get();
@@ -70,7 +67,7 @@ class OfferViewModel extends ChangeNotifier {
 
         if (offersData.containsKey(offerId.toString())) {
           Map<String, dynamic> offerData = offersData[offerId.toString()];
-          int currentViews = offerData.containsKey('views') ? offerData['views'] : 0;
+          int currentViews = offerData['views'] ?? 0;
           offerData['views'] = currentViews + 1;
 
           await offerRef.update({
@@ -92,90 +89,88 @@ class OfferViewModel extends ChangeNotifier {
     double? maxMinutes,
     DateTimeRange? dateRange,
   }) async {
+    if (_offersWithProperties.isNotEmpty && !_isLoading) {
+      return;
+    }
+
     _setLoading(true);
 
     try {
-      // Check network connectivity before making Firebase requests
       bool isConnected = await _connectivityService.isConnected();
-      if (!isConnected) {
-        log.info('No internet connection. Loading data from cache.');
-        loadFromCache(); // Load cached data if offline
-        return;
-      }
+      if (isConnected) {
+        DocumentSnapshot propertyDoc = await _propertiesRef.doc('X8qn8e6UXKberOSYZnXk').get();
+        Map<String, Property> propertyMap = _mapSnapshotToProperties(propertyDoc);
 
-      // Fetch from Firebase if online
-      DocumentSnapshot propertyDoc = await _propertiesRef.doc('X8qn8e6UXKberOSYZnXk').get();
-      Map<String, Property> propertyMap = _mapSnapshotToProperties(propertyDoc);
+        DocumentSnapshot offersDoc = await _offersRef.doc('E2amoJzmIbhtLq65ScpY').get();
+        if (offersDoc.exists && offersDoc.data() != null) {
+          var offersData = offersDoc.data() as Map<String, dynamic>;
+          List<OfferProperty> tempOffersWithProperties = [];
 
-      DocumentSnapshot offersDoc = await _offersRef.doc('E2amoJzmIbhtLq65ScpY').get();
-      if (offersDoc.exists && offersDoc.data() != null) {
-        var offersData = offersDoc.data() as Map<String, dynamic>;
-        List<OfferProperty> tempOffersWithProperties = [];
+          offersData.forEach((key, offerData) {
+            if (offerData['is_active'] == true) {
+              String propertyId = offerData['id_property'].toString();
+              Property? property = propertyMap[propertyId];
 
-        offersData.forEach((key, offerData) {
-          if (offerData['is_active'] == true) {
-            String propertyId = offerData['id_property'].toString();
-            Property? property = propertyMap[propertyId];
+              if (property != null) {
+                Offer offer = Offer(
+                  final_date: (offerData['final_date'] as Timestamp).toDate(),
+                  initial_date: (offerData['initial_date'] as Timestamp).toDate(),
+                  user_id: offerData['user_id'],
+                  property_id: offerData['id_property'],
+                  is_active: offerData['is_active'],
+                  num_baths: (offerData['num_baths'] is double)
+                      ? (offerData['num_baths'] as double).toInt()
+                      : offerData['num_baths'],
+                  num_beds: (offerData['num_beds'] is double)
+                      ? (offerData['num_beds'] as double).toInt()
+                      : offerData['num_beds'],
+                  num_rooms: (offerData['num_rooms'] is double)
+                      ? (offerData['num_rooms'] as double).toInt()
+                      : offerData['num_rooms'],
+                  roommates: (offerData['roommates'] is double)
+                      ? (offerData['roommates'] as double).toInt()
+                      : offerData['roommates'],
+                  only_andes: offerData['only_andes'],
+                  price_per_month: (offerData['price_per_month'] is int)
+                      ? (offerData['price_per_month'] as int).toDouble()
+                      : offerData['price_per_month'],
+                  type: offerData['type'],
+                  offerId: int.tryParse(key) ?? 0,
+                );
 
-            if (property != null) {
-              Offer offer = Offer(
-                final_date: (offerData['final_date'] as Timestamp).toDate(),
-                initial_date: (offerData['initial_date'] as Timestamp).toDate(),
-                user_id: offerData['user_id'],
-                property_id: offerData['id_property'],
-                is_active: offerData['is_active'],
-                num_baths: (offerData['num_baths'] is double)
-                    ? (offerData['num_baths'] as double).toInt()
-                    : offerData['num_baths'],
-                num_beds: (offerData['num_beds'] is double)
-                    ? (offerData['num_beds'] as double).toInt()
-                    : offerData['num_beds'],
-                num_rooms: (offerData['num_rooms'] is double)
-                    ? (offerData['num_rooms'] as double).toInt()
-                    : offerData['num_rooms'],
-                roommates: (offerData['roommates'] is double)
-                    ? (offerData['roommates'] as double).toInt()
-                    : offerData['roommates'],
-                only_andes: offerData['only_andes'],
-                price_per_month: (offerData['price_per_month'] is int)
-                    ? (offerData['price_per_month'] as int).toDouble()
-                    : offerData['price_per_month'],
-                type: offerData['type'],
-                offerId: int.tryParse(key) ?? 0,
-              );
-
-              if (_applyFilters(offer, property, minPrice, maxPrice, maxMinutes, dateRange)) {
-                tempOffersWithProperties.add(OfferProperty(offer: offer, property: property));
+                if (_applyFilters(offer, property, minPrice, maxPrice, maxMinutes, dateRange)) {
+                  tempOffersWithProperties.add(OfferProperty(offer: offer, property: property));
+                }
               }
             }
-          }
-        });
+          });
 
-        // Store the fetched offers in Hive for offline use
-        final box = Hive.box<OfferProperty>('offer_properties');
-        await box.clear();
-        await box.addAll(tempOffersWithProperties);
+          final box = Hive.box<OfferProperty>('offer_properties');
+          await box.clear();
+          await box.addAll(tempOffersWithProperties);
 
-        _offersWithProperties = tempOffersWithProperties;
-        notifyListeners();
+          _offersWithProperties = tempOffersWithProperties;
+          notifyListeners();
+        }
+      } else {
+        loadFromCache();
       }
     } catch (e, stacktrace) {
       log.shout('Error fetching offers: $e\nStacktrace: $stacktrace');
-      loadFromCache(); // Fall back to cache in case of errors
+      loadFromCache();
     } finally {
       _setLoading(false);
     }
   }
 
-
-  /// Load offers from cache (Hive) if offline or in case of error
+  /// Load offers from cache
   void loadFromCache() {
     final box = Hive.box<OfferProperty>('offer_properties');
     if (box.isNotEmpty) {
       _offersWithProperties = box.values.toList();
-      log.info('Loaded offers from cache: $_offersWithProperties'); // Log cached data content
+      log.info('Loaded ${_offersWithProperties.length} offers from cache');
     } else {
-      log.warning('No cached offers found for offline mode.');
+      log.warning('No cached offers available');
       _offersWithProperties = [];
     }
     notifyListeners();
@@ -187,13 +182,13 @@ class OfferViewModel extends ChangeNotifier {
 
     if (snapshot.exists && snapshot.data() != null) {
       var propertiesData = snapshot.data() as Map<String, dynamic>;
-      log.info('Mapping properties from data: $propertiesData'); // Log the properties data
+      log.info('Mapping properties from data: $propertiesData');
 
       propertiesData.forEach((key, propertyData) {
         try {
           int propertyId = int.tryParse(key) ?? 0;
-          double minutesFromCampus;
 
+          double minutesFromCampus;
           if (propertyData['minutes_from_campus'] is int) {
             minutesFromCampus = (propertyData['minutes_from_campus'] as int).toDouble();
           } else if (propertyData['minutes_from_campus'] is double) {
@@ -202,8 +197,9 @@ class OfferViewModel extends ChangeNotifier {
             minutesFromCampus = 0;
           }
 
-          String? description = propertyData['description'] ?? "No description provided";
+          String description = propertyData['description'] ?? "No description provided";
           List<String> photos = List<String>.from(propertyData['photos'] ?? []);
+
           GeoPoint geoPoint = propertyData['location'] is GeoPoint
               ? propertyData['location'] as GeoPoint
               : const GeoPoint(0, 0);
@@ -242,14 +238,8 @@ class OfferViewModel extends ChangeNotifier {
       ) {
     minPrice ??= 0;
 
-    log.info('Applying filters on offer: $offer and property: $property with minPrice $minPrice and maxPrice $maxPrice');
-
-    if (offer.price_per_month < minPrice) {
-      return false;
-    }
-    if (maxPrice != null && offer.price_per_month > maxPrice) {
-      return false;
-    }
+    if (offer.price_per_month < minPrice) return false;
+    if (maxPrice != null && offer.price_per_month > maxPrice) return false;
 
     if (dateRange != null) {
       DateTime initialDate = offer.initial_date;
