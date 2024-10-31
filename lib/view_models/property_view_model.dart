@@ -14,7 +14,7 @@ class PropertyViewModel extends ChangeNotifier {
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
   final CollectionReference _propertiesRef =
-      FirebaseFirestore.instance.collection('properties');
+  FirebaseFirestore.instance.collection('properties');
   final ConnectivityService _connectivityService = ConnectivityService();
   List<Property> get properties => _properties;
   bool get isLoading => _isLoading;
@@ -57,29 +57,26 @@ class PropertyViewModel extends ChangeNotifier {
         await box.addAll(_properties);
       } else {
         // Load properties from Hive when offline
-        final box = Hive.box<Property>('properties');
-        if (box.isNotEmpty) {
-          _properties = box.values.toList();
-        } else {
-          log.warning('No cached properties found for offline mode.');
-          _properties = []; // Clear list if no cache available
-        }
+        loadFromCache();
       }
     } catch (e, stacktrace) {
       log.shout('Error fetching properties: $e\nStacktrace: $stacktrace');
-
-      // In case of an error, load data from Hive
-      final box = Hive.box<Property>('properties');
-      if (box.isNotEmpty) {
-        _properties = box.values.toList();
-      } else {
-        log.warning('No cached properties found during error recovery.');
-        _properties = []; // Clear list if no cache available
-      }
+      loadFromCache(); // Fall back to cache in case of errors
     } finally {
       _setLoading(false);
-      notifyListeners();
     }
+  }
+
+  /// Load properties from cache (Hive) if offline or in case of error
+  void loadFromCache() {
+    final box = Hive.box<Property>('properties');
+    if (box.isNotEmpty) {
+      _properties = box.values.toList();
+    } else {
+      log.warning('No cached properties found for offline mode.');
+      _properties = []; // Clear list if no cache available
+    }
+    notifyListeners();
   }
 
   // Helper method to fetch image URLs from Firebase Storage
@@ -88,7 +85,7 @@ class PropertyViewModel extends ChangeNotifier {
     for (String path in imagePaths) {
       try {
         String downloadUrl =
-            await _storage.ref('properties/$path').getDownloadURL();
+        await _storage.ref('properties/$path').getDownloadURL();
         imageUrls.add(downloadUrl);
       } catch (e) {
         log.shout('Error fetching image URL for $path: $e');
@@ -120,7 +117,7 @@ class PropertyViewModel extends ChangeNotifier {
             photos: List<String>.from(details['photos'] ?? []),
             title: details['title'] ?? '',
             minutesFromCampus:
-                (details['minutes_from_campus'] as num?)?.toDouble() ?? 0.0,
+            (details['minutes_from_campus'] as num?)?.toDouble() ?? 0.0,
           );
         }
       }
