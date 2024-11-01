@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:logging/logging.dart';
+import 'package:path_provider/path_provider.dart';
 import '../connectivity/connectivity_service.dart';
 import '../models/entities/offer.dart';
 import '../models/entities/property.dart';
@@ -15,10 +16,14 @@ class OfferViewModel extends ChangeNotifier {
 
   static final log = Logger('OfferViewModel');
 
-  final CollectionReference _offersRef = FirebaseFirestore.instance.collection('offers');
-  final CollectionReference _propertiesRef = FirebaseFirestore.instance.collection('properties');
-  final CollectionReference _userViewsRef = FirebaseFirestore.instance.collection('user_views');
-  final CollectionReference _usersRef = FirebaseFirestore.instance.collection('users'); // For agents
+  final CollectionReference _offersRef =
+      FirebaseFirestore.instance.collection('offers');
+  final CollectionReference _propertiesRef =
+      FirebaseFirestore.instance.collection('properties');
+  final CollectionReference _userViewsRef =
+      FirebaseFirestore.instance.collection('user_views');
+  final CollectionReference _usersRef =
+      FirebaseFirestore.instance.collection('users'); // For agents
   final ConnectivityService _connectivityService = ConnectivityService();
 
   List<OfferProperty> get offersWithProperties => _offersWithProperties;
@@ -43,7 +48,8 @@ class OfferViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> incrementUserViewCounter(String userEmail, bool hasRoommates) async {
+  Future<void> incrementUserViewCounter(
+      String userEmail, bool hasRoommates) async {
     try {
       DocumentReference docRef = _userViewsRef.doc(userEmail);
 
@@ -59,13 +65,15 @@ class OfferViewModel extends ChangeNotifier {
 
   /// Increment the view counter for a specific offer within a single document
   Future<void> incrementOfferViewCounter(int offerId) async {
-    final offerRef = _offersRef.doc('E2amoJzmIbhtLq65ScpY'); // Reference the single document
+    final offerRef =
+        _offersRef.doc('E2amoJzmIbhtLq65ScpY'); // Reference the single document
 
     try {
       DocumentSnapshot offerDoc = await offerRef.get();
 
       if (offerDoc.exists) {
-        Map<String, dynamic> offersData = offerDoc.data() as Map<String, dynamic>;
+        Map<String, dynamic> offersData =
+            offerDoc.data() as Map<String, dynamic>;
 
         if (offersData.containsKey(offerId.toString())) {
           Map<String, dynamic> offerData = offersData[offerId.toString()];
@@ -87,7 +95,8 @@ class OfferViewModel extends ChangeNotifier {
   /// Fetch and cache agent data when online
   Future<void> fetchAgentAndCache(String userId) async {
     final box = Hive.box<User>('agent_cache');
-    if (!box.containsKey(userId)) { // Only fetch if not already in cache
+    if (!box.containsKey(userId)) {
+      // Only fetch if not already in cache
       try {
         DocumentSnapshot agentSnapshot = await _usersRef.doc(userId).get();
         if (agentSnapshot.exists) {
@@ -98,7 +107,10 @@ class OfferViewModel extends ChangeNotifier {
             photo: agentSnapshot['photo'] ?? '',
             is_andes: agentSnapshot['is_andes'] ?? false,
             type_user: agentSnapshot['type_user'] ?? '',
-            favorite_offers: (agentSnapshot['favorite_offers'] as List<dynamic>?)?.cast<int>() ?? [],
+            favorite_offers:
+                (agentSnapshot['favorite_offers'] as List<dynamic>?)
+                        ?.cast<int>() ??
+                    [],
           );
           await box.put(userId, agent); // Cache the fetched agent
         }
@@ -111,7 +123,6 @@ class OfferViewModel extends ChangeNotifier {
   /// Retrieve cached agent data when offline
   Future<User?> getCachedAgent(String userId) async {
     final box = Hive.box<User>('agent_cache');
-    await box.clear();
     return box.get(userId);
   }
 
@@ -122,63 +133,60 @@ class OfferViewModel extends ChangeNotifier {
     double? maxMinutes,
     DateTimeRange? dateRange,
   }) async {
-    if (_offersWithProperties.isNotEmpty && !_isLoading) {
-      return;
-    }
-
     _setLoading(true);
 
     try {
       bool isConnected = await _connectivityService.isConnected();
       if (isConnected) {
-        DocumentSnapshot propertyDoc = await _propertiesRef.doc('X8qn8e6UXKberOSYZnXk').get();
-        Map<String, Property> propertyMap = _mapSnapshotToProperties(propertyDoc);
+        DocumentSnapshot propertyDoc =
+            await _propertiesRef.doc('X8qn8e6UXKberOSYZnXk').get();
+        Map<String, Property> propertyMap =
+            _mapSnapshotToProperties(propertyDoc);
 
-        DocumentSnapshot offersDoc = await _offersRef.doc('E2amoJzmIbhtLq65ScpY').get();
+        DocumentSnapshot offersDoc =
+            await _offersRef.doc('E2amoJzmIbhtLq65ScpY').get();
         if (offersDoc.exists && offersDoc.data() != null) {
           var offersData = offersDoc.data() as Map<String, dynamic>;
           List<OfferProperty> tempOffersWithProperties = [];
 
-          offersData.forEach((key, offerData) {
+          for (var entry in offersData.entries) {
+            var offerData = entry.value;
             if (offerData['is_active'] == true) {
               String propertyId = offerData['id_property'].toString();
               Property? property = propertyMap[propertyId];
 
               if (property != null) {
+                // Update property photos with local paths
+                for (int i = 0; i < property.photos.length; i++) {
+                  property.photos[i] =
+                      await _getLocalPathForImage(property.photos[i]);
+                }
+
                 Offer offer = Offer(
                   final_date: (offerData['final_date'] as Timestamp).toDate(),
-                  initial_date: (offerData['initial_date'] as Timestamp).toDate(),
+                  initial_date:
+                      (offerData['initial_date'] as Timestamp).toDate(),
                   user_id: offerData['user_id'],
                   property_id: offerData['id_property'],
                   is_active: offerData['is_active'],
-                  num_baths: (offerData['num_baths'] is double)
-                      ? (offerData['num_baths'] as double).toInt()
-                      : offerData['num_baths'],
-                  num_beds: (offerData['num_beds'] is double)
-                      ? (offerData['num_beds'] as double).toInt()
-                      : offerData['num_beds'],
-                  num_rooms: (offerData['num_rooms'] is double)
-                      ? (offerData['num_rooms'] as double).toInt()
-                      : offerData['num_rooms'],
-                  roommates: (offerData['roommates'] is double)
-                      ? (offerData['roommates'] as double).toInt()
-                      : offerData['roommates'],
+                  num_baths: offerData['num_baths'],
+                  num_beds: offerData['num_beds'],
+                  num_rooms: offerData['num_rooms'],
+                  roommates: offerData['roommates'],
                   only_andes: offerData['only_andes'],
-                  price_per_month: (offerData['price_per_month'] is int)
-                      ? (offerData['price_per_month'] as int).toDouble()
-                      : offerData['price_per_month'],
+                  price_per_month: offerData['price_per_month'].toDouble(),
                   type: offerData['type'],
-                  offerId: int.tryParse(key) ?? 0,
+                  offerId: int.tryParse(entry.key) ?? 0,
                 );
 
-                if (_applyFilters(offer, property, minPrice, maxPrice, maxMinutes, dateRange)) {
-                  tempOffersWithProperties.add(OfferProperty(offer: offer, property: property));
-                  // Cache agent data if online
-                  fetchAgentAndCache(offer.user_id);
+                if (_applyFilters(offer, property, minPrice, maxPrice,
+                    maxMinutes, dateRange)) {
+                  tempOffersWithProperties
+                      .add(OfferProperty(offer: offer, property: property));
                 }
               }
             }
-          });
+          }
 
           final box = Hive.box<OfferProperty>('offer_properties');
           await box.clear();
@@ -188,18 +196,33 @@ class OfferViewModel extends ChangeNotifier {
           notifyListeners();
         }
       } else {
-        loadFromCache();
+        await loadFromCache();
+        applyFiltersOnCachedData(
+            minPrice: minPrice,
+            maxPrice: maxPrice,
+            maxMinutes: maxMinutes,
+            dateRange: dateRange);
       }
     } catch (e, stacktrace) {
       log.shout('Error fetching offers: $e\nStacktrace: $stacktrace');
-      loadFromCache();
+      await loadFromCache();
+      applyFiltersOnCachedData(
+          minPrice: minPrice,
+          maxPrice: maxPrice,
+          maxMinutes: maxMinutes,
+          dateRange: dateRange);
     } finally {
       _setLoading(false);
     }
   }
 
-  /// Load offers from cache
-  void loadFromCache() {
+  Future<String> _getLocalPathForImage(String filename) async {
+    final directory = await getApplicationDocumentsDirectory();
+    return '${directory.path}/$filename';
+  }
+
+  /// Load offers from cache without clearing it
+  Future<void> loadFromCache() async {
     final box = Hive.box<OfferProperty>('offer_properties');
     if (box.isNotEmpty) {
       _offersWithProperties = box.values.toList();
@@ -212,26 +235,26 @@ class OfferViewModel extends ChangeNotifier {
   }
 
   /// Apply filters on cached data when offline
-  void applyFiltersOnCachedData({
+  Future<void> applyFiltersOnCachedData({
     double? minPrice,
     double? maxPrice,
     double? maxMinutes,
     DateTimeRange? dateRange,
-  }) {
+  }) async {
     final box = Hive.box<OfferProperty>('offer_properties');
     _offersWithProperties = box.values
-        .where((offerProperty) =>
-        _applyFilters(
-          offerProperty.offer,
-          offerProperty.property,
-          minPrice,
-          maxPrice,
-          maxMinutes,
-          dateRange,
-        ))
+        .where((offerProperty) => _applyFilters(
+              offerProperty.offer,
+              offerProperty.property,
+              minPrice,
+              maxPrice,
+              maxMinutes,
+              dateRange,
+            ))
         .toList();
 
-    log.info('Applied filters on cached data, found ${_offersWithProperties.length} matching offers');
+    log.info(
+        'Applied filters on cached data, found ${_offersWithProperties.length} matching offers');
     notifyListeners();
   }
 
@@ -249,14 +272,16 @@ class OfferViewModel extends ChangeNotifier {
 
           double minutesFromCampus;
           if (propertyData['minutes_from_campus'] is int) {
-            minutesFromCampus = (propertyData['minutes_from_campus'] as int).toDouble();
+            minutesFromCampus =
+                (propertyData['minutes_from_campus'] as int).toDouble();
           } else if (propertyData['minutes_from_campus'] is double) {
             minutesFromCampus = propertyData['minutes_from_campus'];
           } else {
             minutesFromCampus = 0;
           }
 
-          String description = propertyData['description'] ?? "No description provided";
+          String description =
+              propertyData['description'] ?? "No description provided";
           List<String> photos = List<String>.from(propertyData['photos'] ?? []);
 
           GeoPoint geoPoint = propertyData['location'] is GeoPoint
@@ -288,13 +313,13 @@ class OfferViewModel extends ChangeNotifier {
 
   /// Apply filters on offers and properties
   bool _applyFilters(
-      Offer offer,
-      Property property,
-      double? minPrice,
-      double? maxPrice,
-      double? maxMinutes,
-      DateTimeRange? dateRange,
-      ) {
+    Offer offer,
+    Property property,
+    double? minPrice,
+    double? maxPrice,
+    double? maxMinutes,
+    DateTimeRange? dateRange,
+  ) {
     minPrice ??= 0;
 
     if (offer.price_per_month < minPrice) return false;
@@ -304,7 +329,8 @@ class OfferViewModel extends ChangeNotifier {
       DateTime initialDate = offer.initial_date;
       DateTime finalDate = offer.final_date;
 
-      if (finalDate.isBefore(dateRange.start) || initialDate.isAfter(dateRange.end)) {
+      if (finalDate.isBefore(dateRange.start) ||
+          initialDate.isAfter(dateRange.end)) {
         return false;
       }
     }

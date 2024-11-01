@@ -10,8 +10,10 @@ class UserViewModel extends ChangeNotifier {
 
   static final log = Logger('UserViewModel');
 
-  final CollectionReference _usersRef = FirebaseFirestore.instance.collection('users');
-  final CollectionReference _userViewsRef = FirebaseFirestore.instance.collection('user_views');
+  final CollectionReference _usersRef =
+      FirebaseFirestore.instance.collection('users');
+  final CollectionReference _userViewsRef =
+      FirebaseFirestore.instance.collection('user_views');
 
   List<User> get users => _users;
   bool get isLoading => _isLoading;
@@ -31,7 +33,8 @@ class UserViewModel extends ChangeNotifier {
 
       notifyListeners();
     } catch (e, stacktrace) {
-      log.shout('Error fetching users from Firestore: $e\nStacktrace: $stacktrace');
+      log.shout(
+          'Error fetching users from Firestore: $e\nStacktrace: $stacktrace');
       _loadUsersFromCache();
     } finally {
       _setLoading(false);
@@ -41,11 +44,14 @@ class UserViewModel extends ChangeNotifier {
   /// Fetch a specific user by ID, using cache if offline
   Future<User?> fetchUserById(String userId) async {
     final box = Hive.box<User>('user_cache');
-    final cachedUser = box.get(userId);  // Retrieve directly by userId as the key
+    await box.clear();
+    final cachedUser =
+        box.get(userId); // Retrieve directly by userId as the key
 
     try {
       String encodedUserId = _encodeEmail(userId);
-      DocumentSnapshot usersDoc = await _usersRef.doc('eBbttobInFQe6i9wLHSF').get();
+      DocumentSnapshot usersDoc =
+          await _usersRef.doc('eBbttobInFQe6i9wLHSF').get();
 
       if (usersDoc.exists && usersDoc.data() != null) {
         var userData = usersDoc[encodedUserId] as Map<String, dynamic>? ?? {};
@@ -54,33 +60,39 @@ class UserViewModel extends ChangeNotifier {
         User user = User(
           email: userData['email'] as String? ?? 'Unknown Email',
           name: userData['name'] as String? ?? 'Unknown Agent',
-          phone: (userData['phone'] is int ? userData['phone'] : int.tryParse(userData['phone']?.toString() ?? '0')) ?? 0,
+          phone: (userData['phone'] is int
+                  ? userData['phone']
+                  : int.tryParse(userData['phone']?.toString() ?? '0')) ??
+              0,
           photo: userData['photo'] as String? ?? '',
           is_andes: userData['is_andes'] as bool? ?? false,
           type_user: userData['type_user'] as String? ?? 'Unknown Type',
-          favorite_offers: (userData['favorite_offers'] as List<dynamic>?)?.map((e) => e as int).toList() ?? [],
+          favorite_offers: (userData['favorite_offers'] as List<dynamic>?)
+                  ?.map((e) => e as int)
+                  .toList() ??
+              [],
         );
 
         // Cache the fetched user data
-        await box.put(userId, user);  // Use userId as the key
+        await box.put(userId, user); // Use userId as the key
         return user;
       } else {
         throw Exception('User not found for id: $userId');
       }
     } catch (e) {
       log.shout('Error fetching user by id: $e');
-      return cachedUser ?? User(
-        email: 'Unknown',
-        name: 'Unknown Agent',
-        phone: 0,
-        photo: '',
-        is_andes: false,
-        type_user: 'Unknown Type',
-        favorite_offers: [],
-      );
+      return cachedUser ??
+          User(
+            email: 'Unknown',
+            name: 'Unknown Agent',
+            phone: 0,
+            photo: '',
+            is_andes: false,
+            type_user: 'Unknown Type',
+            favorite_offers: [],
+          );
     }
   }
-
 
   /// Method to create user_views document if it doesn't exist
   Future<void> createUserViewsDocumentIfNotExists(String userEmail) async {
@@ -150,8 +162,9 @@ class UserViewModel extends ChangeNotifier {
   }
 
   /// Load users from cache when offline or in case of error
-  void _loadUsersFromCache() {
+  Future<void> _loadUsersFromCache() async {
     final box = Hive.box<User>('user_cache');
+    await box.clear();
     if (box.isNotEmpty) {
       _users = box.values.toList();
       log.info('Loaded ${_users.length} users from cache');

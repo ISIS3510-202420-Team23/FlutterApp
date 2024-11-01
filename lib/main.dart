@@ -15,7 +15,6 @@ import 'package:provider/provider.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'models/entities/geo_point_adapter.dart';
 import 'models/entities/offer.dart';
-import 'models/entities/user.g.dart';
 import 'models/entities/user.dart';
 import 'models/entities/offer_property.dart';
 import 'models/entities/property.dart';
@@ -23,7 +22,6 @@ import 'view/auth/bloc/auth_bloc.dart';
 import 'view_models/property_view_model.dart';
 import 'view_models/user_view_model.dart';
 import 'package:path_provider/path_provider.dart' as path_provider;
-
 
 void main() async {
   await _initializeApp();
@@ -40,7 +38,6 @@ void main() async {
 Future<void> _initializeApp() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Set up Hive (Cache)
   final appDocumentDir = await path_provider.getApplicationDocumentsDirectory();
   Hive.init(appDocumentDir.path);
   Hive.registerAdapter(PropertyAdapter());
@@ -48,12 +45,12 @@ Future<void> _initializeApp() async {
   Hive.registerAdapter(OfferPropertyAdapter());
   Hive.registerAdapter(GeoPointAdapter());
   Hive.registerAdapter(UserAdapter());
+
   await Hive.openBox<Property>('properties');
+  await Hive.openBox<User>('agent_cache');
   await Hive.openBox<Offer>('offers');
   await Hive.openBox<OfferProperty>('offer_properties');
   await Hive.openBox<User>('user_cache');
-  await Hive.openBox<List<String>>('image_cache');
-  await Hive.openBox<User>('agent_cache');
 
   // Load environment variables from .env file
   await dotenv.load(fileName: ".env");
@@ -64,7 +61,8 @@ Future<void> _initializeApp() async {
   );
 
   // Disable Firestore persistence
-  FirebaseFirestore.instance.settings = const Settings(persistenceEnabled: false);
+  FirebaseFirestore.instance.settings =
+      const Settings(persistenceEnabled: false);
 
   // Initialize Firebase Analytics
   AnalyticsEngine.initializeAnalytics();

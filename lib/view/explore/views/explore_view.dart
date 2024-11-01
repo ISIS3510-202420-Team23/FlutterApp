@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:andlet/analytics/analytics_engine.dart';
 import 'package:andlet/view_models/user_action_view_model.dart';
 import 'package:flutter/material.dart';
@@ -47,8 +48,11 @@ class _ExploreViewState extends State<ExploreView> {
   @override
   void initState() {
     super.initState();
-    _initializeConnectivity();
-    _fetchUserPreferences();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeConnectivity();
+      _fetchUserPreferences();
+      _fetchInitialData();
+    });
   }
 
   void _initializeConnectivity() {
@@ -60,7 +64,8 @@ class _ExploreViewState extends State<ExploreView> {
   }
 
   void _updateConnectionStatus(ConnectivityResult result) async {
-    bool isConnected = result != ConnectivityResult.none && await _connectivityService.isConnected();
+    bool isConnected = result != ConnectivityResult.none &&
+        await _connectivityService.isConnected();
     log.info('Updated connectivity status: $isConnected');
     setState(() {
       _isConnected = isConnected;
@@ -78,18 +83,20 @@ class _ExploreViewState extends State<ExploreView> {
 
   Future<void> _fetchInitialData() async {
     final offerViewModel = Provider.of<OfferViewModel>(context, listen: false);
-    final propertyViewModel = Provider.of<PropertyViewModel>(context, listen: false);
+    final propertyViewModel =
+        Provider.of<PropertyViewModel>(context, listen: false);
 
     log.info('Fetching offers and properties from Firestore');
     await offerViewModel.fetchOffersWithFilters();
-    await propertyViewModel.fetchProperties();
+    await propertyViewModel.fetchPropertiesInBatches();
   }
 
   Future<void> _fetchUserPreferences() async {
     try {
       log.info('Fetching user roommate preferences for ${widget.userEmail}');
-      var userPreferences = await Provider.of<OfferViewModel>(context, listen: false)
-          .fetchUserRoommatePreferences(widget.userEmail);
+      var userPreferences =
+          await Provider.of<OfferViewModel>(context, listen: false)
+              .fetchUserRoommatePreferences(widget.userEmail);
       setState(() {
         userRoommatePreference = userPreferences;
       });
@@ -99,15 +106,16 @@ class _ExploreViewState extends State<ExploreView> {
     }
   }
 
-  // Adjusted _applyFilters to use cached data when offline
-  void _applyFilters(double? price, double? minutes, DateTimeRange? dateRange) async {
+  void _applyFilters(
+      double? price, double? minutes, DateTimeRange? dateRange) async {
     setState(() {
       selectedPrice = price;
       selectedMinutes = minutes;
       selectedDateRange = dateRange;
     });
 
-    log.info('Applying filters: price=$price, minutes=$minutes, dateRange=$dateRange');
+    log.info(
+        'Applying filters: price=$price, minutes=$minutes, dateRange=$dateRange');
     final offerViewModel = Provider.of<OfferViewModel>(context, listen: false);
     if (_isConnected) {
       await offerViewModel.fetchOffersWithFilters(
@@ -134,7 +142,6 @@ class _ExploreViewState extends State<ExploreView> {
     _applyFilters(null, null, null);
   }
 
-  // Open the FilterModal
   void _openFilterModal() {
     AnalyticsEngine.logFilterButtonPressed();
     UserActionsViewModel().addUserAction(widget.userEmail, 'filter');
@@ -156,7 +163,6 @@ class _ExploreViewState extends State<ExploreView> {
     );
   }
 
-  // Sort offers based on roommate preference
   List<OfferProperty> _sortOffers(List<OfferProperty> offers) {
     if (userRoommatePreference == null) return offers;
 
@@ -168,12 +174,12 @@ class _ExploreViewState extends State<ExploreView> {
       }
     });
 
-    log.info('Offers sorted based on roommate preference: $userRoommatePreference');
+    log.info(
+        'Offers sorted based on roommate preference: $userRoommatePreference');
     return offers;
   }
 
-  // Offline navigation to PropertyDetailView, using cached data
-  void _navigateToPropertyDetailView(OfferProperty offerProperty, List<String> imageUrls) async {
+  void _navigateToPropertyDetailView(OfferProperty offerProperty) async {
     final userViewModel = Provider.of<UserViewModel>(context, listen: false);
     final offer = offerProperty.offer;
     final property = offerProperty.property;
@@ -187,16 +193,20 @@ class _ExploreViewState extends State<ExploreView> {
       }
     } else {
       try {
-        agent = await Provider.of<OfferViewModel>(context, listen: false).getCachedAgent(offer.user_id);
+        agent = await Provider.of<OfferViewModel>(context, listen: false)
+            .getCachedAgent(offer.user_id);
       } catch (e) {
         log.warning('Failed to fetch agent data from cache: $e');
       }
     }
 
-    // Set fallback values if agent data is not available
     final agentName = agent?.name ?? 'Unknown Agent';
     final agentEmail = agent?.email ?? 'Not Available';
     final agentPhoto = agent?.photo ?? '';
+
+    // Ensure photos are local paths before passing to PropertyDetailView
+    List<String> localImagePaths =
+        property.photos.where((path) => File(path).existsSync()).toList();
 
     Navigator.push(
       context,
@@ -204,7 +214,7 @@ class _ExploreViewState extends State<ExploreView> {
         builder: (context) => PropertyDetailView(
           title: property.title,
           address: property.address,
-          imageUrls: imageUrls,
+          imageUrls: localImagePaths, // Pass only valid local paths
           rooms: offer.num_rooms.toString(),
           bathrooms: offer.num_baths.toString(),
           roommates: offer.roommates.toString(),
@@ -223,7 +233,6 @@ class _ExploreViewState extends State<ExploreView> {
   Widget build(BuildContext context) {
     final offerViewModel = Provider.of<OfferViewModel>(context);
     final propertyViewModel = Provider.of<PropertyViewModel>(context);
-    final userViewModel = Provider.of<UserViewModel>(context);
     String firstName = widget.displayName.split(' ').first;
     final sortedOffers = _sortOffers(offerViewModel.offersWithProperties);
 
@@ -263,7 +272,8 @@ class _ExploreViewState extends State<ExploreView> {
                 CircleAvatar(
                   backgroundImage: widget.photoUrl.isNotEmpty
                       ? NetworkImage(widget.photoUrl)
-                      : const AssetImage('lib/assets/personaicono.png') as ImageProvider,
+                      : const AssetImage('lib/assets/personaicono.png')
+                          as ImageProvider,
                   radius: 35.r,
                 ),
               ],
@@ -277,17 +287,21 @@ class _ExploreViewState extends State<ExploreView> {
                   children: [
                     const Icon(Icons.warning, color: Colors.white),
                     const SizedBox(width: 8.0),
-                    Expanded(child: Text('No Internet Connection, offers will not be updated', style: TextStyle(color: Colors.white, fontSize: 14.sp))),
+                    Expanded(
+                        child: Text(
+                            'No Internet Connection, offers will not be updated',
+                            style: TextStyle(
+                                color: Colors.white, fontSize: 14.sp))),
                   ],
                 ),
               ),
-            if (!_isConnected)
-              SizedBox(height: 20.h),
+            if (!_isConnected) SizedBox(height: 20.h),
             Row(
               children: [
                 Expanded(
                   child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 15.w, vertical: 10.h),
+                    padding:
+                        EdgeInsets.symmetric(horizontal: 15.w, vertical: 10.h),
                     decoration: BoxDecoration(
                       color: const Color(0xFFB5D5FF),
                       borderRadius: BorderRadius.circular(10.r),
@@ -301,7 +315,9 @@ class _ExploreViewState extends State<ExploreView> {
                     ),
                     child: GestureDetector(
                       onTap: () {
-                        if (selectedPrice != null || selectedMinutes != null || selectedDateRange != null) {
+                        if (selectedPrice != null ||
+                            selectedMinutes != null ||
+                            selectedDateRange != null) {
                           _clearFilters();
                         } else {
                           _openFilterModal();
@@ -311,9 +327,15 @@ class _ExploreViewState extends State<ExploreView> {
                         children: [
                           const Icon(Icons.search, color: Color(0xFF0C356A)),
                           SizedBox(width: 10.w),
-                          const Expanded(child: Text('Search for a place...', style: TextStyle(color: Color(0xFF0C356A)))),
+                          const Expanded(
+                              child: Text('Search for a place...',
+                                  style: TextStyle(color: Color(0xFF0C356A)))),
                           Icon(
-                            (selectedPrice != null || selectedMinutes != null || selectedDateRange != null) ? Icons.close : Icons.menu,
+                            (selectedPrice != null ||
+                                    selectedMinutes != null ||
+                                    selectedDateRange != null)
+                                ? Icons.close
+                                : Icons.menu,
                             color: const Color(0xFF0C356A),
                           ),
                         ],
@@ -323,7 +345,9 @@ class _ExploreViewState extends State<ExploreView> {
                 ),
               ],
             ),
-            if (selectedPrice != null || selectedMinutes != null || selectedDateRange != null)
+            if (selectedPrice != null ||
+                selectedMinutes != null ||
+                selectedDateRange != null)
               Padding(
                 padding: EdgeInsets.symmetric(vertical: 5.h),
                 child: SingleChildScrollView(
@@ -333,19 +357,30 @@ class _ExploreViewState extends State<ExploreView> {
                       if (selectedPrice != null)
                         Padding(
                           padding: const EdgeInsets.only(right: 8.0),
-                          child: Chip(label: Text('Price: \$${selectedPrice!.toInt()}', style: const TextStyle(color: Color(0xFF0C356A))), backgroundColor: const Color(0xFFB5D5FF)),
+                          child: Chip(
+                              label: Text('Price: \$${selectedPrice!.toInt()}',
+                                  style: const TextStyle(
+                                      color: Color(0xFF0C356A))),
+                              backgroundColor: const Color(0xFFB5D5FF)),
                         ),
                       if (selectedMinutes != null)
                         Padding(
                           padding: const EdgeInsets.only(right: 8.0),
-                          child: Chip(label: Text('Minutes: ${selectedMinutes!.toInt()}', style: const TextStyle(color: Color(0xFF0C356A))), backgroundColor: const Color(0xFFB5D5FF)),
+                          child: Chip(
+                              label: Text(
+                                  'Minutes: ${selectedMinutes!.toInt()}',
+                                  style: const TextStyle(
+                                      color: Color(0xFF0C356A))),
+                              backgroundColor: const Color(0xFFB5D5FF)),
                         ),
                       if (selectedDateRange != null)
                         Padding(
                           padding: const EdgeInsets.only(right: 8.0),
                           child: Chip(
-                            label: Text('Dates: ${DateFormat('MM/dd').format(selectedDateRange!.start)} - ${DateFormat('MM/dd').format(selectedDateRange!.end)}',
-                                style: const TextStyle(color: Color(0xFF0C356A))),
+                            label: Text(
+                                'Dates: ${DateFormat('MM/dd').format(selectedDateRange!.start)} - ${DateFormat('MM/dd').format(selectedDateRange!.end)}',
+                                style:
+                                    const TextStyle(color: Color(0xFF0C356A))),
                             backgroundColor: const Color(0xFFB5D5FF),
                           ),
                         ),
@@ -356,41 +391,43 @@ class _ExploreViewState extends State<ExploreView> {
             SizedBox(height: 10.h),
             Expanded(
               child: RefreshIndicator(
-                onRefresh: _isConnected ? _fetchInitialData : () async => _showOfflineSnackbar(),
-                child: sortedOffers.isEmpty
-                    ? const Center(child: Text('No properties match your filters.', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Color(0xFF0C356A))))
-                    : ListView(
-                  children: sortedOffers.map((offerWithProperty) {
-                    final offer = offerWithProperty.offer;
-                    final property = offerWithProperty.property;
+                onRefresh: _isConnected
+                    ? _fetchInitialData
+                    : () async => _showOfflineSnackbar(),
+                child:
+                    (propertyViewModel.isLoading || offerViewModel.isLoading) &&
+                            sortedOffers.isEmpty
+                        ? const Center(child: CircularProgressIndicator())
+                        : sortedOffers.isEmpty
+                            ? const Center(
+                                child: Text('No properties match your filters.',
+                                    style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF0C356A))))
+                            : ListView.builder(
+                                itemCount: sortedOffers.length,
+                                itemBuilder: (context, index) {
+                                  final offerWithProperty = sortedOffers[index];
+                                  final offer = offerWithProperty.offer;
+                                  final property = offerWithProperty.property;
 
-                    return FutureBuilder<List<String>>(
-                      future: propertyViewModel.getImageUrls(property.photos),
-                      builder: (context, imageSnapshot) {
-                        if (imageSnapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(child: CircularProgressIndicator());
-                        } else if (imageSnapshot.hasError || imageSnapshot.data == null) {
-                          return const Center(child: Text('Error loading images'));
-                        }
-
-                        final imageUrls = imageSnapshot.data ?? [];
-
-                        return GestureDetector(
-                          onTap: () => _navigateToPropertyDetailView(offerWithProperty, imageUrls),
-                          child: PropertyCard(
-                            imageUrls: imageUrls,
-                            title: property.title,
-                            address: property.address,
-                            rooms: offer.num_rooms.toString(),
-                            baths: offer.num_baths.toString(),
-                            roommates: offer.roommates.toString(),
-                            price: offer.price_per_month.toString(),
-                          ),
-                        );
-                      },
-                    );
-                  }).toList(),
-                ),
+                                  return GestureDetector(
+                                    onTap: () => _navigateToPropertyDetailView(
+                                        offerWithProperty),
+                                    child: PropertyCard(
+                                      imageUrls:
+                                          property.photos, // Local image paths
+                                      title: property.title,
+                                      address: property.address,
+                                      rooms: offer.num_rooms.toString(),
+                                      baths: offer.num_baths.toString(),
+                                      roommates: offer.roommates.toString(),
+                                      price: offer.price_per_month.toString(),
+                                    ),
+                                  );
+                                },
+                              ),
               ),
             ),
           ],
@@ -422,7 +459,10 @@ class _ExploreViewState extends State<ExploreView> {
   void _showOfflineSnackbar() {
     log.warning('User attempted to refresh while offline');
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('You are offline. Refresh is disabled.', style: TextStyle(color: Colors.white)), backgroundColor: Colors.redAccent),
+      const SnackBar(
+          content: Text('You are offline. Refresh is disabled.',
+              style: TextStyle(color: Colors.white)),
+          backgroundColor: Colors.redAccent),
     );
   }
 }

@@ -1,9 +1,14 @@
-import 'package:hive/hive.dart';
-import 'user.dart';
+// GENERATED CODE - DO NOT MODIFY BY HAND
+
+part of 'user.dart';
+
+// **************************************************************************
+// TypeAdapterGenerator
+// **************************************************************************
 
 class UserAdapter extends TypeAdapter<User> {
   @override
-  final int typeId = 5; // Ensure this ID is unique across all your adapters
+  final int typeId = 5;
 
   @override
   User read(BinaryReader reader) {
@@ -16,8 +21,8 @@ class UserAdapter extends TypeAdapter<User> {
       is_andes: fields[1] as bool,
       name: fields[2] as String,
       phone: fields[3] as int,
-      photo: fields[4] as String,
-      type_user: fields[5] as String,
+      photo: fields[5] as String,
+      type_user: fields[4] as String,
       favorite_offers: (fields[6] as List?)?.cast<int>(),
     );
   }
@@ -25,7 +30,7 @@ class UserAdapter extends TypeAdapter<User> {
   @override
   void write(BinaryWriter writer, User obj) {
     writer
-      ..writeByte(7) // Number of fields
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.email)
       ..writeByte(1)
@@ -35,9 +40,9 @@ class UserAdapter extends TypeAdapter<User> {
       ..writeByte(3)
       ..write(obj.phone)
       ..writeByte(4)
-      ..write(obj.photo)
-      ..writeByte(5)
       ..write(obj.type_user)
+      ..writeByte(5)
+      ..write(obj.photo)
       ..writeByte(6)
       ..write(obj.favorite_offers);
   }
@@ -48,7 +53,7 @@ class UserAdapter extends TypeAdapter<User> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-          other is UserAdapter &&
-              runtimeType == other.runtimeType &&
-              typeId == other.typeId;
+      other is UserAdapter &&
+          runtimeType == other.runtimeType &&
+          typeId == other.typeId;
 }

@@ -1,78 +1,115 @@
+import 'dart:async';
+import 'dart:isolate';
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dio/dio.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:hive/hive.dart';
 import 'package:logging/logging.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../connectivity/connectivity_service.dart';
 import '../models/entities/property.dart';
 
 class PropertyViewModel extends ChangeNotifier {
   List<Property> _properties = [];
   bool _isLoading = false;
+  int _batchSize = 10;
+  DocumentSnapshot? _lastDocument;
+  Completer<bool>? _permissionCompleter;
+  String? _appDocumentsPath; // Store the documents directory path
 
   final Dio _dio = Dio();
-
   static final log = Logger('PropertyViewModel');
   final FirebaseStorage _storage = FirebaseStorage.instance;
-  final CollectionReference _propertiesRef = FirebaseFirestore.instance.collection('properties');
+  final CollectionReference _propertiesRef =
+      FirebaseFirestore.instance.collection('properties');
   final ConnectivityService _connectivityService = ConnectivityService();
 
   List<Property> get properties => _properties;
   bool get isLoading => _isLoading;
 
-  /// Fetch properties from Firestore or load from cache if offline
-  Future<void> fetchProperties() async {
+  PropertyViewModel() {
+    _initializePermissions();
+    _initializeAppDirectory(); // Initialize the app directory path
+  }
+
+  Future<void> _initializePermissions() async {
+    bool granted = await _requestStoragePermissions();
+    if (!granted) {
+      log.warning(
+          'Storage permission not granted. Some features may not work as expected.');
+    }
+  }
+
+  Future<bool> _requestStoragePermissions() async {
+    if (_permissionCompleter != null) {
+      return _permissionCompleter!.future;
+    }
+
+    _permissionCompleter = Completer<bool>();
+    try {
+      if (await Permission.storage.isGranted) {
+        _permissionCompleter!.complete(true);
+        return true;
+      }
+
+      var status = await Permission.storage.request();
+      _permissionCompleter!.complete(status.isGranted);
+      if (status.isPermanentlyDenied) await openAppSettings();
+
+      return _permissionCompleter!.future;
+    } finally {
+      _permissionCompleter = null;
+    }
+  }
+
+  /// Fetch the application directory path
+  Future<void> _initializeAppDirectory() async {
+    final directory = await getApplicationDocumentsDirectory();
+    _appDocumentsPath = directory.path;
+  }
+
+  /// Fetch properties in batches with Firestore pagination
+  Future<void> fetchPropertiesInBatches() async {
+    if (_isLoading || _appDocumentsPath == null)
+      return; // Ensure directory path is initialized
     _setLoading(true);
 
     try {
       bool isConnected = await _connectivityService.isConnected();
       if (isConnected) {
-        log.info('Fetching properties from Firestore...');
-        QuerySnapshot snapshot = await _propertiesRef.get();
-        _properties = _mapSnapshotToProperties(snapshot);
-
-        // Store properties in Hive for offline access
-        // Download image URLs for offline use
-        for (var property in _properties) {
-          for (int i = 0; i < property.photos.length; i++) {
-            String filename = property.photos[i]; // e.g., 'apartment_image.jpg'
-            try {
-              // Get the download URL from Firebase Storage
-              String imageUrl =
-                  await _storage.ref('properties/$filename').getDownloadURL();
-
-              // Download and save the image to local storage
-              final localPath = await _downloadAndSaveImage(imageUrl, filename);
-
-              // Update the property photo URL to the local path
-              property.photos[i] = localPath;
-            } catch (e) {
-              log.shout(
-                  'Error fetching and downloading image for $filename: $e');
-            }
-          }
+        Query query = _propertiesRef.limit(_batchSize);
+        if (_lastDocument != null) {
+          query = query.startAfterDocument(_lastDocument!);
         }
 
-        // Store the fetched properties in Hive for offline use
-        final box = Hive.box<Property>('properties');
-        await box.clear();
-        await box.addAll(_properties);
+        QuerySnapshot snapshot = await query.get();
+        if (snapshot.docs.isNotEmpty) {
+          _lastDocument = snapshot.docs.last;
+          List<Property> batchProperties = _mapSnapshotToProperties(snapshot);
+
+          _properties.addAll(batchProperties);
+
+          // Download images for the batch in a separate isolate
+          await _downloadImagesInIsolate(batchProperties, _appDocumentsPath!);
+
+          _cacheProperties(); // Optionally cache this batch
+        }
       } else {
-        log.warning('Offline - Loading properties from cache...');
-        loadFromCache();
+        await loadFromCache();
       }
     } catch (e, stacktrace) {
       log.shout('Error fetching properties: $e\nStacktrace: $stacktrace');
-      loadFromCache();
+      await loadFromCache();
     } finally {
       _setLoading(false);
     }
   }
 
-  /// Load properties from cache (Hive) when offline or in case of error
-  void loadFromCache() {
+  Future<void> loadFromCache() async {
     final box = Hive.box<Property>('properties');
     if (box.isNotEmpty) {
       _properties = box.values.toList();
@@ -84,58 +121,50 @@ class PropertyViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Helper method to fetch image URLs from Firebase Storage for a list of property images
-  /// Method to download and save images to local storage
-  Future<String> _downloadAndSaveImage(String url, String fileName) async {
-    try {
-      final directory = await getApplicationDocumentsDirectory();
-      final filePath = '${directory.path}/$fileName';
-      final response = await _dio.download(url, filePath);
-
-      if (response.statusCode == 200) {
-        return filePath;
-      } else {
-        throw Exception('Failed to download image');
-      }
-    } catch (e) {
-      throw Exception('Error downloading image: $e');
+  /// Download images for a batch of properties using an isolate
+  Future<void> _downloadImagesInIsolate(
+      List<Property> properties, String appDocumentsPath) async {
+    final receivePort = ReceivePort();
+    await Isolate.spawn(_downloadImagesIsolate,
+        [receivePort.sendPort, properties, appDocumentsPath]);
+    await for (var message in receivePort) {
+      if (message is String && message == 'done') break;
     }
+    notifyListeners();
   }
 
-  // Helper method to fetch image URLs from Firebase Storage
-  Future<List<String>> getImageUrls(List<String> imagePaths) async {
-    final box = Hive.box<List<String>>('image_cache');
-    final cachedUrls = box.get(imagePaths.join(',')); // Key as a joined path string
-    bool isConnected = await _connectivityService.isConnected();
+  /// Isolate function for downloading images
+  static Future<void> _downloadImagesIsolate(List<dynamic> args) async {
+    SendPort sendPort = args[0];
+    List<Property> properties = args[1];
+    String appDocumentsPath = args[2];
 
-    // Use cached URLs if offline
-    if (!isConnected && cachedUrls != null) {
-      log.info('Loading cached image URLs for paths: $imagePaths');
-      return cachedUrls;
-    }
+    for (var property in properties) {
+      for (int i = 0; i < property.photos.length; i++) {
+        String filename = property.photos[i];
+        final filePath = '$appDocumentsPath/$filename';
+        final file = File(filePath);
 
-    // Fetch URLs from Firebase Storage if online
-    List<String> imageUrls = [];
-    for (String path in imagePaths) {
-      try {
-        String downloadUrl = await _storage.ref('properties/$path').getDownloadURL();
-        imageUrls.add(downloadUrl);
-      } catch (e) {
-        log.severe('Error fetching image URL for $path: $e');
+        if (await file.exists()) {
+          property.photos[i] = filePath;
+          continue;
+        }
+
+        try {
+          String url = await FirebaseStorage.instance
+              .ref('properties/$filename')
+              .getDownloadURL();
+          await Dio().download(url, filePath);
+          property.photos[i] = filePath;
+        } catch (e) {
+          log.shout('Error downloading image: $e');
+        }
       }
     }
 
-    // Cache the fetched URLs for offline usage
-    if (imageUrls.isNotEmpty) {
-      await box.put(imagePaths.join(','), imageUrls);
-      log.info('Caching image URLs for paths: $imagePaths');
-    }
-
-    return imageUrls;
+    sendPort.send('done');
   }
 
-
-  /// Map Firestore snapshot to a list of Property models
   List<Property> _mapSnapshotToProperties(QuerySnapshot snapshot) {
     List<Property> properties = [];
 
@@ -167,7 +196,12 @@ class PropertyViewModel extends ChangeNotifier {
     return properties;
   }
 
-  /// Method to update loading state and notify listeners
+  Future<void> _cacheProperties() async {
+    final box = Hive.box<Property>('properties');
+    await box.clear();
+    await box.addAll(_properties);
+  }
+
   void _setLoading(bool loading) {
     _isLoading = loading;
     notifyListeners();
