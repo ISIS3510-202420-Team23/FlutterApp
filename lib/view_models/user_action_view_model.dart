@@ -60,6 +60,10 @@ class UserActionsViewModel extends ChangeNotifier {
       initial_num = '1';
     } else if (action == 'contact') {
       initial_num = '2';
+    } else if (action == 'landlordContacted') {
+      initial_num = '4';
+    } else if (action == 'peak') {
+      initial_num = '5';
     } else {
       initial_num = '';
     }

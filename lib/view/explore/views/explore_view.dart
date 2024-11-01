@@ -48,6 +48,9 @@ class _ExploreViewState extends State<ExploreView> {
   @override
   void initState() {
     super.initState();
+
+    // Analytics
+    UserActionsViewModel().addUserAction(widget.userEmail, '5');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeConnectivity();
       _fetchUserPreferences();

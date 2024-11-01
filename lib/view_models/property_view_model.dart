@@ -16,14 +16,12 @@ import '../models/entities/property.dart';
 class PropertyViewModel extends ChangeNotifier {
   List<Property> _properties = [];
   bool _isLoading = false;
-  int _batchSize = 10;
+  final int _batchSize = 10;
   DocumentSnapshot? _lastDocument;
   Completer<bool>? _permissionCompleter;
   String? _appDocumentsPath; // Store the documents directory path
 
-  final Dio _dio = Dio();
   static final log = Logger('PropertyViewModel');
-  final FirebaseStorage _storage = FirebaseStorage.instance;
   final CollectionReference _propertiesRef =
       FirebaseFirestore.instance.collection('properties');
   final ConnectivityService _connectivityService = ConnectivityService();
@@ -74,8 +72,9 @@ class PropertyViewModel extends ChangeNotifier {
 
   /// Fetch properties in batches with Firestore pagination
   Future<void> fetchPropertiesInBatches() async {
-    if (_isLoading || _appDocumentsPath == null)
+    if (_isLoading || _appDocumentsPath == null) {
       return; // Ensure directory path is initialized
+    }
     _setLoading(true);
 
     try {
