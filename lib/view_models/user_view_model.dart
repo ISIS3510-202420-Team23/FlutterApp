@@ -1,106 +1,123 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 import 'package:logging/logging.dart';
 import '../models/entities/user.dart';
 
 class UserViewModel extends ChangeNotifier {
-  /// List of users
   List<User> _users = [];
   bool _isLoading = false;
 
   static final log = Logger('UserViewModel');
 
-  // Reference to Firestore 'users' collection
   final CollectionReference _usersRef =
       FirebaseFirestore.instance.collection('users');
+  final CollectionReference _userViewsRef =
+      FirebaseFirestore.instance.collection('user_views');
 
-  /// Getter for users
   List<User> get users => _users;
-
-  /// Getter for loading state
   bool get isLoading => _isLoading;
 
-  /// Method to fetch users from Firestore and decode emails
+  /// Fetch users from Firestore or load from cache if offline
   Future<void> fetchUsers() async {
     _setLoading(true);
 
     try {
       QuerySnapshot snapshot = await _usersRef.get();
-      _users = snapshot.docs.expand((doc) {
-        final userData = doc.data() as Map<String, dynamic>;
+      _users = _mapSnapshotToUsers(snapshot);
 
-        return userData.entries.map((entry) {
-          // Decode email back to its original form
-          final email = _decodeEmail(entry.key);
-          final details = entry.value as Map<String, dynamic>;
-
-          return User(
-            email: email,
-            name: details['name'] ?? '',
-            phone:
-                int.tryParse(details['phone'].toString()) ?? 0, // Updated line
-            photo: details['photo'] ?? '',
-            is_andes: details['is_andes'] ?? false,
-            type_user: details['type_user'] ?? '',
-            favorite_offers: List<int>.from(details['favorite_offers'] ?? []),
-          );
-        });
-      }).toList();
+      // Store the users in Hive for offline access
+      final box = Hive.box<User>('user_cache');
+      await box.clear();
+      await box.addAll(_users);
 
       notifyListeners();
     } catch (e, stacktrace) {
-      log.shout('Error fetching users: $e\nStacktrace: $stacktrace');
+      log.shout(
+          'Error fetching users from Firestore: $e\nStacktrace: $stacktrace');
+      _loadUsersFromCache();
     } finally {
       _setLoading(false);
     }
   }
 
-  Future<Map<String, dynamic>> fetchUserById(String userId) async {
-    try {
-      // Encode userId (replace dots with underscores)
-      String encodedUserId = userId.replaceAll('.', '_');
-      DocumentSnapshot usersDoc = await _usersRef
-          .doc('eBbttobInFQe6i9wLHSF')
-          .get(); // Fixed document ID
+  /// Fetch a specific user by ID, using cache if offline
+  Future<User?> fetchUserById(String userId) async {
+    final box = Hive.box<User>('user_cache');
+    await box.clear();
+    final cachedUser =
+        box.get(userId); // Retrieve directly by userId as the key
 
-      if (usersDoc.exists) {
-        var userData = usersDoc[encodedUserId] as Map<String, dynamic>;
-        return userData;
+    try {
+      String encodedUserId = _encodeEmail(userId);
+      DocumentSnapshot usersDoc =
+          await _usersRef.doc('eBbttobInFQe6i9wLHSF').get();
+
+      if (usersDoc.exists && usersDoc.data() != null) {
+        var userData = usersDoc[encodedUserId] as Map<String, dynamic>? ?? {};
+
+        // Ensure fields match expected types before creating a User object
+        User user = User(
+          email: userData['email'] as String? ?? 'Unknown Email',
+          name: userData['name'] as String? ?? 'Unknown Agent',
+          phone: (userData['phone'] is int
+                  ? userData['phone']
+                  : int.tryParse(userData['phone']?.toString() ?? '0')) ??
+              0,
+          photo: userData['photo'] as String? ?? '',
+          is_andes: userData['is_andes'] as bool? ?? false,
+          type_user: userData['type_user'] as String? ?? 'Unknown Type',
+          favorite_offers: (userData['favorite_offers'] as List<dynamic>?)
+                  ?.map((e) => e as int)
+                  .toList() ??
+              [],
+        );
+
+        // Cache the fetched user data
+        await box.put(userId, user); // Use userId as the key
+        return user;
       } else {
         throw Exception('User not found for id: $userId');
       }
     } catch (e) {
       log.shout('Error fetching user by id: $e');
-      rethrow;
+      return cachedUser ??
+          User(
+            email: 'Unknown',
+            name: 'Unknown Agent',
+            phone: 0,
+            photo: '',
+            is_andes: false,
+            type_user: 'Unknown Type',
+            favorite_offers: [],
+          );
     }
   }
 
-  // Method to create user_views document if it doesn't exist
+  /// Method to create user_views document if it doesn't exist
   Future<void> createUserViewsDocumentIfNotExists(String userEmail) async {
-    final CollectionReference userViewsRef =
-        FirebaseFirestore.instance.collection('user_views');
-
-    DocumentSnapshot userDoc = await userViewsRef.doc(userEmail).get();
-    if (!userDoc.exists) {
-      // Create a new document with 0 values for views
-      await userViewsRef.doc(userEmail).set({
-        'roommates_views': 0,
-        'no_roommates_views': 0,
-      });
+    try {
+      DocumentSnapshot userDoc = await _userViewsRef.doc(userEmail).get();
+      if (!userDoc.exists) {
+        await _userViewsRef.doc(userEmail).set({
+          'roommates_views': 0,
+          'no_roommates_views': 0,
+        });
+        log.info('Created user_views document for $userEmail');
+      } else {
+        log.info('user_views document already exists for $userEmail');
+      }
+    } catch (e) {
+      log.severe('Error creating user_views document: $e');
     }
   }
 
-  /// Method to add a new user as a subfield inside a single Firestore document
+  /// Add a new user and update Firestore and cache
   Future<void> addUser(User user) async {
     try {
-      // Reference to the specific document where users will be stored as subfields
-      final usersDocRef =
-          _usersRef.doc('eBbttobInFQe6i9wLHSF'); // Fixed document ID
-
-      // Encode email to avoid dots causing nesting
+      final usersDocRef = _usersRef.doc('eBbttobInFQe6i9wLHSF');
       final String emailKey = _encodeEmail(user.email);
 
-      // Prepare the user data to be nested under the encoded email
       final userData = {
         emailKey: {
           'email': user.email,
@@ -113,52 +130,83 @@ class UserViewModel extends ChangeNotifier {
         }
       };
 
-      // Check if the document exists and update or set accordingly
       final doc = await usersDocRef.get();
       if (doc.exists) {
-        // If document exists, update the subfield (user data inside the document)
         await usersDocRef.update(userData);
       } else {
-        // If the document does not exist, create it with the user data
         await usersDocRef.set(userData);
       }
 
-      // Fetch the updated users list
+      // Update the cached users list
       await fetchUsers();
     } catch (e) {
       log.shout('Error adding user: $e');
     }
   }
 
-  /// Method to remove a user from Firestore by email
+  /// Remove a user and update Firestore and cache
   Future<void> removeUser(String email) async {
     try {
       final usersDocRef = _usersRef.doc('eBbttobInFQe6i9wLHSF');
       final String emailKey = _encodeEmail(email);
 
-      // To remove the specific user entry within the document
       await usersDocRef.update({
         emailKey: FieldValue.delete(),
       });
 
-      // Fetch the updated users list
+      // Update the cached users list
       await fetchUsers();
     } catch (e) {
       log.shout('Error removing user: $e');
     }
   }
 
-  /// Method to encode email by replacing dots to prevent Firestore nesting
+  /// Load users from cache when offline or in case of error
+  Future<void> _loadUsersFromCache() async {
+    final box = Hive.box<User>('user_cache');
+    await box.clear();
+    if (box.isNotEmpty) {
+      _users = box.values.toList();
+      log.info('Loaded ${_users.length} users from cache');
+    } else {
+      log.warning('No cached users available');
+      _users = [];
+    }
+    notifyListeners();
+  }
+
+  /// Helper method to map Firestore snapshot to a list of User models
+  List<User> _mapSnapshotToUsers(QuerySnapshot snapshot) {
+    return snapshot.docs.expand((doc) {
+      final userData = doc.data() as Map<String, dynamic>;
+      return userData.entries.map((entry) {
+        final email = _decodeEmail(entry.key);
+        final details = entry.value as Map<String, dynamic>;
+
+        return User(
+          email: email,
+          name: details['name'] ?? '',
+          phone: int.tryParse(details['phone'].toString()) ?? 0,
+          photo: details['photo'] ?? '',
+          is_andes: details['is_andes'] ?? false,
+          type_user: details['type_user'] ?? '',
+          favorite_offers: List<int>.from(details['favorite_offers'] ?? []),
+        );
+      });
+    }).toList();
+  }
+
+  /// Encode email by replacing dots with underscores
   String _encodeEmail(String email) {
     return email.replaceAll('.', '_');
   }
 
-  /// Method to decode email by reversing the encoding
+  /// Decode email by reversing the encoding
   String _decodeEmail(String encodedEmail) {
     return encodedEmail.replaceAll('_', '.');
   }
 
-  /// Method to update loading state and notify listeners
+  /// Set loading state and notify listeners
   void _setLoading(bool loading) {
     _isLoading = loading;
     notifyListeners();

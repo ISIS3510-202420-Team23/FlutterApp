@@ -3,6 +3,7 @@ import 'package:andlet/view/common/welcome_page.dart';
 import 'package:andlet/view_models/offer_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // Import Firestore
 import 'package:hive/hive.dart';
 import 'cas/location_service.dart';
 import 'firebase_options.dart';
@@ -11,9 +12,10 @@ import 'package:logging/logging.dart';
 import 'package:logging_to_logcat/logging_to_logcat.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart'; // Added for responsiveness
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'models/entities/geo_point_adapter.dart';
 import 'models/entities/offer.dart';
+import 'models/entities/user.dart';
 import 'models/entities/offer_property.dart';
 import 'models/entities/property.dart';
 import 'view/auth/bloc/auth_bloc.dart';
@@ -36,24 +38,31 @@ void main() async {
 Future<void> _initializeApp() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Set up hive (Cache)
   final appDocumentDir = await path_provider.getApplicationDocumentsDirectory();
   Hive.init(appDocumentDir.path);
   Hive.registerAdapter(PropertyAdapter());
   Hive.registerAdapter(OfferAdapter());
   Hive.registerAdapter(OfferPropertyAdapter());
-  Hive.registerAdapter(GeoPointAdapter()); // Register the GeoPointAdapter
+  Hive.registerAdapter(GeoPointAdapter());
+  Hive.registerAdapter(UserAdapter());
+
   await Hive.openBox<Property>('properties');
+  await Hive.openBox<User>('agent_cache');
   await Hive.openBox<Offer>('offers');
   await Hive.openBox<OfferProperty>('offer_properties');
+  await Hive.openBox<User>('user_cache');
 
   // Load environment variables from .env file
   await dotenv.load(fileName: ".env");
 
-  // Initialize and Firebase
+  // Initialize Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Disable Firestore persistence
+  FirebaseFirestore.instance.settings =
+      const Settings(persistenceEnabled: false);
 
   // Initialize Firebase Analytics
   AnalyticsEngine.initializeAnalytics();
@@ -64,8 +73,8 @@ Future<void> _initializeApp() async {
 
 /// Set up logging
 void _setupLogging() {
-  Logger.root.level = Level.ALL; // Set the logging level
-  Logger.root.activateLogcat(); // Enable Logcat logging on Android
+  Logger.root.level = Level.ALL;
+  Logger.root.activateLogcat();
   final Logger log = Logger('Main');
   log.info('App initialized successfully!');
 }
@@ -78,18 +87,16 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ScreenUtilInit(
-      designSize: const Size(375, 812), // Define your base screen size
+      designSize: const Size(375, 812),
       builder: (context, child) {
         return MultiProvider(
           providers: [
-            // Include PropertyViewModel as a ChangeNotifierProvider
             ChangeNotifierProvider(create: (_) => PropertyViewModel()),
             ChangeNotifierProvider(create: (_) => OfferViewModel()),
             ChangeNotifierProvider(create: (_) => UserViewModel()),
           ],
           child: MultiBlocProvider(
             providers: [
-              // Existing AuthBloc
               BlocProvider<AuthBloc>(create: (context) => AuthBloc()),
             ],
             child: MaterialApp(
