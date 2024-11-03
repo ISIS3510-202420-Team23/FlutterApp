@@ -1,8 +1,11 @@
+import 'package:andlet/view_models/user_action_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:io';
+
+import '../../../analytics/analytics_engine.dart';
 
 class PropertyDetailView extends StatefulWidget {
   final String title;
@@ -287,6 +290,11 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                           setState(() {
                             showContactDetails = !showContactDetails;
                           });
+
+                          // Analytics
+                          AnalyticsEngine.logContactButtonPressed();
+                          UserActionsViewModel()
+                              .addUserAction(widget.userEmail, 'contact');
                         },
                         child: Text(
                           'Contact',
@@ -313,11 +321,17 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                         width: MediaQuery.of(context).size.width *
                             0.9, // Set the width relative to screen
                         child: GestureDetector(
-                          onTap: () => _openEmailClient(
-                            widget.agentEmail, // Email address of the agent
-                            widget.title, // Property title
-                            getFirstAndLastName(widget.agentName), // Agent name
-                          ),
+                          onTap: () {
+                            _openEmailClient(
+                              widget.agentEmail, // Email address of the agent
+                              widget.title, // Property title
+                              getFirstAndLastName(
+                                  widget.agentName), // Agent name
+                            );
+                            // Analytics
+                            UserActionsViewModel().addUserAction(
+                                widget.agentEmail, 'landlordContacted');
+                          },
                           child: Text(
                             'Email: ${widget.agentEmail}',
                             textAlign: TextAlign.center,
