@@ -294,7 +294,7 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                           // Analytics
                           AnalyticsEngine.logContactButtonPressed();
                           UserActionsViewModel()
-                              .addUserAction(widget.userEmail, '2');
+                              .addUserAction(widget.userEmail, 'contact');
                         },
                         child: Text(
                           'Contact',
@@ -329,8 +329,8 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                                   widget.agentName), // Agent name
                             );
                             // Analytics
-                            UserActionsViewModel()
-                                .addUserAction(widget.agentEmail, '4');
+                            UserActionsViewModel().addUserAction(
+                                widget.agentEmail, 'landlordContacted');
                           },
                           child: Text(
                             'Email: ${widget.agentEmail}',

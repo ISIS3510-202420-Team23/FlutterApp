@@ -50,7 +50,7 @@ class _ExploreViewState extends State<ExploreView> {
     super.initState();
 
     // Analytics
-    UserActionsViewModel().addUserAction(widget.userEmail, '5');
+    UserActionsViewModel().addUserAction(widget.userEmail, 'peak');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeConnectivity();
       _fetchUserPreferences();
