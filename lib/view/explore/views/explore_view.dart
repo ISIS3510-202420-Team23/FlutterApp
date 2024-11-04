@@ -215,20 +215,15 @@ class _ExploreViewState extends State<ExploreView> {
         log.warning('Failed to fetch agent data online: $e');
       }
     } else {
-      try {
-        agent = await Provider.of<OfferViewModel>(context, listen: false)
-            .getCachedAgent(offer.user_id);
-      } catch (e) {
-        log.warning('Failed to fetch agent data from cache: $e');
-      }
+      // If offline, retrieve directly from cache
+      agent = await userViewModel.fetchUserById(offer.user_id);
     }
 
     final agentName = agent?.name ?? 'Unknown Agent';
     final agentEmail = agent?.email ?? 'Not Available';
     final agentPhoto = agent?.photo ?? '';
 
-    List<String> localImagePaths =
-    property.photos.where((path) => File(path).existsSync()).toList();
+    List<String> localImagePaths = property.photos.where((path) => File(path).existsSync()).toList();
 
     Navigator.push(
       context,
@@ -250,6 +245,7 @@ class _ExploreViewState extends State<ExploreView> {
       ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {

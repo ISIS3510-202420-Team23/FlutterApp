@@ -44,43 +44,41 @@ class UserViewModel extends ChangeNotifier {
   /// Fetch a specific user by ID, using cache if offline
   Future<User?> fetchUserById(String userId) async {
     final box = Hive.box<User>('user_cache');
-    await box.clear();
-    final cachedUser =
-        box.get(userId); // Retrieve directly by userId as the key
+
+    // Check if there's a cached user before attempting to fetch from Firestore
+    final cachedUser = box.get(userId);
+    if (cachedUser != null) {
+      // Return cached user if available
+      return cachedUser;
+    }
 
     try {
+      // Proceed to fetch from Firestore if connected and no cached data
       String encodedUserId = _encodeEmail(userId);
-      DocumentSnapshot usersDoc =
-          await _usersRef.doc('eBbttobInFQe6i9wLHSF').get();
+      DocumentSnapshot usersDoc = await _usersRef.doc('eBbttobInFQe6i9wLHSF').get();
 
       if (usersDoc.exists && usersDoc.data() != null) {
         var userData = usersDoc[encodedUserId] as Map<String, dynamic>? ?? {};
 
-        // Ensure fields match expected types before creating a User object
         User user = User(
           email: userData['email'] as String? ?? 'Unknown Email',
           name: userData['name'] as String? ?? 'Unknown Agent',
-          phone: (userData['phone'] is int
-                  ? userData['phone']
-                  : int.tryParse(userData['phone']?.toString() ?? '0')) ??
-              0,
+          phone: (userData['phone'] is int ? userData['phone'] : int.tryParse(userData['phone']?.toString() ?? '0')) ?? 0,
           photo: userData['photo'] as String? ?? '',
           is_andes: userData['is_andes'] as bool? ?? false,
           type_user: userData['type_user'] as String? ?? 'Unknown Type',
-          favorite_offers: (userData['favorite_offers'] as List<dynamic>?)
-                  ?.map((e) => e as int)
-                  .toList() ??
-              [],
+          favorite_offers: (userData['favorite_offers'] as List<dynamic>?)?.map((e) => e as int).toList() ?? [],
         );
 
-        // Cache the fetched user data
-        await box.put(userId, user); // Use userId as the key
+        // Cache the fetched user data for future offline use
+        await box.put(userId, user);
         return user;
       } else {
         throw Exception('User not found for id: $userId');
       }
     } catch (e) {
       log.shout('Error fetching user by id: $e');
+      // Return the cached user as a fallback if Firestore fetch fails
       return cachedUser ??
           User(
             email: 'Unknown',
@@ -93,6 +91,7 @@ class UserViewModel extends ChangeNotifier {
           );
     }
   }
+
 
   /// Method to create user_views document if it doesn't exist
   Future<void> createUserViewsDocumentIfNotExists(String userEmail) async {
