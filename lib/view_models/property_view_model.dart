@@ -1,10 +1,8 @@
 import 'dart:async';
-import 'dart:isolate';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:hive/hive.dart';
 import 'package:logging/logging.dart';
@@ -18,8 +16,7 @@ class PropertyViewModel extends ChangeNotifier {
   bool _isLoading = false;
   final int _batchSize = 10;
   DocumentSnapshot? _lastDocument;
-  Completer<bool>? _permissionCompleter;
-  String? _appDocumentsPath; // Store the documents directory path
+  String? _appDocumentsPath; // Store the directory path for local storage
 
   static final log = Logger('PropertyViewModel');
   final CollectionReference _propertiesRef =
@@ -30,50 +27,27 @@ class PropertyViewModel extends ChangeNotifier {
   bool get isLoading => _isLoading;
 
   PropertyViewModel() {
-    _initializePermissions();
-    _initializeAppDirectory(); // Initialize the app directory path
+    _initialize(); // Initialize permissions and local path
   }
 
-  Future<void> _initializePermissions() async {
-    bool granted = await _requestStoragePermissions();
-    if (!granted) {
-      log.warning(
-          'Storage permission not granted. Some features may not work as expected.');
+  Future<void> _initialize() async {
+    bool permissionGranted = await _requestStoragePermissions();
+    if (permissionGranted) {
+      _appDocumentsPath = (await getApplicationDocumentsDirectory()).path;
+    } else {
+      _appDocumentsPath = (await getApplicationDocumentsDirectory()).path;
+      log.warning('Storage permission not granted. Images might not save.');
     }
   }
 
   Future<bool> _requestStoragePermissions() async {
-    if (_permissionCompleter != null) {
-      return _permissionCompleter!.future;
-    }
-
-    _permissionCompleter = Completer<bool>();
-    try {
-      if (await Permission.storage.isGranted) {
-        _permissionCompleter!.complete(true);
-        return true;
-      }
-
-      var status = await Permission.storage.request();
-      _permissionCompleter!.complete(status.isGranted);
-      if (status.isPermanentlyDenied) await openAppSettings();
-
-      return _permissionCompleter!.future;
-    } finally {
-      _permissionCompleter = null;
-    }
+    PermissionStatus status = await Permission.storage.request();
+    return status.isGranted;
   }
 
-  /// Fetch the application directory path
-  Future<void> _initializeAppDirectory() async {
-    final directory = await getApplicationDocumentsDirectory();
-    _appDocumentsPath = directory.path;
-  }
-
-  /// Fetch properties in batches with Firestore pagination
   Future<void> fetchPropertiesInBatches() async {
     if (_isLoading || _appDocumentsPath == null) {
-      return; // Ensure directory path is initialized
+      return; // Ensure local path is set
     }
     _setLoading(true);
 
@@ -90,21 +64,51 @@ class PropertyViewModel extends ChangeNotifier {
           _lastDocument = snapshot.docs.last;
           List<Property> batchProperties = _mapSnapshotToProperties(snapshot);
 
+          // Ensure images are downloaded before adding to properties
+          for (var property in batchProperties) {
+            await _downloadImages(property);
+          }
+
           _properties.addAll(batchProperties);
-
-          // Download images for the batch in a separate isolate
-          await _downloadImagesInIsolate(batchProperties, _appDocumentsPath!);
-
-          _cacheProperties(); // Optionally cache this batch
+          _cacheProperties(); // Cache the properties locally
+          notifyListeners();
         }
       } else {
         await loadFromCache();
       }
     } catch (e, stacktrace) {
-      log.shout('Error fetching properties: $e\nStacktrace: $stacktrace');
-      await loadFromCache();
+      log.severe('Error fetching properties: $e\nStacktrace: $stacktrace');
+      await loadFromCache(); // Load cached data in case of error
     } finally {
       _setLoading(false);
+    }
+  }
+
+  Future<void> _downloadImages(Property property) async {
+    if (_appDocumentsPath == null) return;
+
+    for (int i = 0; i < property.photos.length; i++) {
+      String filename = property.photos[i];
+      final filePath = '$_appDocumentsPath/$filename';
+      final file = File(filePath);
+
+      // Check if file exists before attempting download
+      if (await file.exists()) {
+        property.photos[i] = filePath; // Update to local path
+        continue;
+      }
+
+      try {
+        // Download from Firebase Storage if not found locally
+        String url = await FirebaseStorage.instance
+            .ref('properties/$filename')
+            .getDownloadURL();
+        await Dio().download(url, filePath);
+        property.photos[i] = filePath; // Update to local path after download
+      } catch (e) {
+        log.warning('Failed to download image: $filename - $e');
+        property.photos[i] = ''; // Placeholder for missing images
+      }
     }
   }
 
@@ -120,48 +124,15 @@ class PropertyViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Download images for a batch of properties using an isolate
-  Future<void> _downloadImagesInIsolate(
-      List<Property> properties, String appDocumentsPath) async {
-    final receivePort = ReceivePort();
-    await Isolate.spawn(_downloadImagesIsolate,
-        [receivePort.sendPort, properties, appDocumentsPath]);
-    await for (var message in receivePort) {
-      if (message is String && message == 'done') break;
-    }
-    notifyListeners();
-  }
-
-  /// Isolate function for downloading images
-  static Future<void> _downloadImagesIsolate(List<dynamic> args) async {
-    SendPort sendPort = args[0];
-    List<Property> properties = args[1];
-    String appDocumentsPath = args[2];
-
-    for (var property in properties) {
-      for (int i = 0; i < property.photos.length; i++) {
-        String filename = property.photos[i];
-        final filePath = '$appDocumentsPath/$filename';
-        final file = File(filePath);
-
-        if (await file.exists()) {
-          property.photos[i] = filePath;
-          continue;
-        }
-
-        try {
-          String url = await FirebaseStorage.instance
-              .ref('properties/$filename')
-              .getDownloadURL();
-          await Dio().download(url, filePath);
-          property.photos[i] = filePath;
-        } catch (e) {
-          log.shout('Error downloading image: $e');
-        }
+  Future<void> clearLocalImages() async {
+    final directory = await getApplicationDocumentsDirectory();
+    final imageDir = Directory(directory.path);
+    if (await imageDir.exists()) {
+      final images = imageDir.listSync();
+      for (var image in images) {
+        if (image is File) await image.delete();
       }
     }
-
-    sendPort.send('done');
   }
 
   List<Property> _mapSnapshotToProperties(QuerySnapshot snapshot) {
@@ -197,12 +168,23 @@ class PropertyViewModel extends ChangeNotifier {
 
   Future<void> _cacheProperties() async {
     final box = Hive.box<Property>('properties');
-    await box.clear();
+    await box.clear(); // Clear previous cache
     await box.addAll(_properties);
+  }
+
+  Future<void> cacheProperties() async {
+    final box = Hive.box<Property>('properties');
+    await box.clear(); // Clear previous cache
+    await box.addAll(_properties); // Add all properties to cache
+    log.info("Properties cached successfully.");
   }
 
   void _setLoading(bool loading) {
     _isLoading = loading;
     notifyListeners();
+  }
+
+  Property? getPropertyById(int id) {
+    return _properties.firstWhere((property) => property.id == id);
   }
 }
