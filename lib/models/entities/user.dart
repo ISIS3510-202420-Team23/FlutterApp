@@ -1,10 +1,27 @@
+import 'package:hive/hive.dart';
+part 'user.g.dart';
+
+@HiveType(typeId: 5)
 class User {
+  @HiveField(0)
   final String email;
+
+  @HiveField(1)
   final bool is_andes;
+
+  @HiveField(2)
   final String name;
+
+  @HiveField(3)
   final int phone;
+
+  @HiveField(4)
   final String type_user;
+
+  @HiveField(5)
   final String photo;
+
+  @HiveField(6)
   final List<int>? favorite_offers;
 
   User({

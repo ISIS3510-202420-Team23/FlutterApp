@@ -1,113 +1,190 @@
+import 'dart:async';
+import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 import 'package:logging/logging.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import '../connectivity/connectivity_service.dart';
 import '../models/entities/property.dart';
 
 class PropertyViewModel extends ChangeNotifier {
   List<Property> _properties = [];
   bool _isLoading = false;
+  final int _batchSize = 10;
+  DocumentSnapshot? _lastDocument;
+  String? _appDocumentsPath; // Store the directory path for local storage
 
   static final log = Logger('PropertyViewModel');
-  final FirebaseStorage _storage = FirebaseStorage.instance;
-
-  final CollectionReference _propertiesRef = FirebaseFirestore.instance.collection('properties');
+  final CollectionReference _propertiesRef =
+      FirebaseFirestore.instance.collection('properties');
+  final ConnectivityService _connectivityService = ConnectivityService();
 
   List<Property> get properties => _properties;
   bool get isLoading => _isLoading;
 
-  /// Method to fetch properties from Firestore with nested fields
-  Future<void> fetchProperties() async {
+  PropertyViewModel() {
+    _initialize(); // Initialize permissions and local path
+  }
+
+  Future<void> _initialize() async {
+    bool permissionGranted = await _requestStoragePermissions();
+    if (permissionGranted) {
+      _appDocumentsPath = (await getApplicationDocumentsDirectory()).path;
+    } else {
+      _appDocumentsPath = (await getApplicationDocumentsDirectory()).path;
+      log.warning('Storage permission not granted. Images might not save.');
+    }
+  }
+
+  Future<bool> _requestStoragePermissions() async {
+    PermissionStatus status = await Permission.storage.request();
+    return status.isGranted;
+  }
+
+  Future<void> fetchPropertiesInBatches() async {
+    if (_isLoading || _appDocumentsPath == null) {
+      return; // Ensure local path is set
+    }
     _setLoading(true);
 
     try {
-      QuerySnapshot snapshot = await _propertiesRef.get();
+      bool isConnected = await _connectivityService.isConnected();
+      if (isConnected) {
+        Query query = _propertiesRef.limit(_batchSize);
+        if (_lastDocument != null) {
+          query = query.startAfterDocument(_lastDocument!);
+        }
 
-      _properties = snapshot.docs.expand((doc) {
-        final propertyData = doc.data() as Map<String, dynamic>;
+        QuerySnapshot snapshot = await query.get();
+        if (snapshot.docs.isNotEmpty) {
+          _lastDocument = snapshot.docs.last;
+          List<Property> batchProperties = _mapSnapshotToProperties(snapshot);
 
-        // Now we iterate through the nested fields inside the document
-        return propertyData.entries.map((entry) {
-          final id = entry.key;
-          final details = entry.value as Map<String, dynamic>;
+          // Ensure images are downloaded before adding to properties
+          for (var property in batchProperties) {
+            await _downloadImages(property);
+          }
 
-          // Create a Property object using the details map
-          return Property(
-            id: int.tryParse(id) ?? -1, // Convert the key (ID) to an int
-            address: details['address'] ?? '',
-            complex_name: details['complex_name'] ?? '',
-            description: details['description'] ?? '',
-            location: details['location'] ?? const GeoPoint(0, 0),
-            photos: List<String>.from(details['photos'] ?? []),
-            title: details['title'] ?? '',
-            minutesFromCampus: details['minutes_from_campus'] != null
-                ? (details['minutes_from_campus'] as num).toDouble()
-                : 0.0,
-          );
-        }).toList();
-      }).toList();
-
-      notifyListeners();
+          _properties.addAll(batchProperties);
+          _cacheProperties(); // Cache the properties locally
+          notifyListeners();
+        }
+      } else {
+        await loadFromCache();
+      }
     } catch (e, stacktrace) {
-      log.shout('Error fetching properties: $e\nStacktrace: $stacktrace');
+      log.severe('Error fetching properties: $e\nStacktrace: $stacktrace');
+      await loadFromCache(); // Load cached data in case of error
     } finally {
       _setLoading(false);
     }
   }
 
-  // Helper method to fetch image URLs from Firebase Storage
-  Future<List<String>> getImageUrls(List<String> imagePaths) async {
-    List<String> imageUrls = [];
-    for (String path in imagePaths) {
+  Future<void> _downloadImages(Property property) async {
+    if (_appDocumentsPath == null) return;
+
+    for (int i = 0; i < property.photos.length; i++) {
+      String filename = property.photos[i];
+      final filePath = '$_appDocumentsPath/$filename';
+      final file = File(filePath);
+
+      // Check if file exists before attempting download
+      if (await file.exists()) {
+        property.photos[i] = filePath; // Update to local path
+        continue;
+      }
+
       try {
-        String downloadUrl =
-        await _storage.ref('properties/$path').getDownloadURL();
-        imageUrls.add(downloadUrl);
+        // Download from Firebase Storage if not found locally
+        String url = await FirebaseStorage.instance
+            .ref('properties/$filename')
+            .getDownloadURL();
+        await Dio().download(url, filePath);
+        property.photos[i] = filePath; // Update to local path after download
       } catch (e) {
-        log.shout('Error fetching image URL for $path: $e');
+        log.warning('Failed to download image: $filename - $e');
+        property.photos[i] = ''; // Placeholder for missing images
       }
     }
-    return imageUrls;
   }
-  /// Method to get a property by its ID
-  Future<Property?> getPropertyById(int id) async {
-    try {
-      // Fetch all documents in the collection
-      QuerySnapshot snapshot = await _propertiesRef.get();
-      // Iterate through each document to find the property with the matching ID
-      for (var doc in snapshot.docs) {
-        final propertyData = doc.data() as Map<String, dynamic>;
 
-        // Check if the document contains the property with the given ID
-        if (propertyData.containsKey(id.toString())) {
-          final details = propertyData[id.toString()] as Map<String, dynamic>;
+  Future<void> loadFromCache() async {
+    final box = Hive.box<Property>('properties');
+    if (box.isNotEmpty) {
+      _properties = box.values.toList();
+      log.info('Loaded ${_properties.length} properties from cache');
+    } else {
+      log.warning('No cached properties available');
+      _properties = [];
+    }
+    notifyListeners();
+  }
 
-          // Return the property mapped from the details
-          return Property(
-            id: id, // Use the int ID here
-            address: details['address'] ?? '',
-            complex_name: details['complex_name'] ?? '',
-            description: details['description'] ?? '',
-            location: details['location'] ?? const GeoPoint(0, 0),
-            photos: List<String>.from(details['photos'] ?? []),
-            title: details['title'] ?? '',
-            minutesFromCampus: (details['minutes_from_campus'] as num?)?.toDouble() ?? 0.0,
-          );
-        }
+  Future<void> clearLocalImages() async {
+    final directory = await getApplicationDocumentsDirectory();
+    final imageDir = Directory(directory.path);
+    if (await imageDir.exists()) {
+      final images = imageDir.listSync();
+      for (var image in images) {
+        if (image is File) await image.delete();
       }
+    }
+  }
 
-      // If no property with the given ID was found
-      log.info('Property with ID $id not found');
-    } catch (e, stacktrace) {
-      log.shout('Error fetching property by ID $id: $e\nStacktrace: $stacktrace');
+  List<Property> _mapSnapshotToProperties(QuerySnapshot snapshot) {
+    List<Property> properties = [];
+
+    for (var doc in snapshot.docs) {
+      final propertyData = doc.data() as Map<String, dynamic>;
+      properties.addAll(propertyData.entries.map((entry) {
+        final id = int.tryParse(entry.key) ?? -1;
+        final details = entry.value as Map<String, dynamic>;
+
+        GeoPoint location = details['location'] is GeoPoint
+            ? details['location'] as GeoPoint
+            : const GeoPoint(0, 0);
+
+        return Property(
+          id: id,
+          address: details['address'] ?? '',
+          complex_name: details['complex_name'] ?? '',
+          description: details['description'] ?? '',
+          location: location,
+          photos: List<String>.from(details['photos'] ?? []),
+          title: details['title'] ?? '',
+          minutesFromCampus: details['minutes_from_campus'] != null
+              ? (details['minutes_from_campus'] as num).toDouble()
+              : 0.0,
+        );
+      }));
     }
 
-    return null;
+    return properties;
   }
 
-  /// Method to update loading state
+  Future<void> _cacheProperties() async {
+    final box = Hive.box<Property>('properties');
+    await box.clear(); // Clear previous cache
+    await box.addAll(_properties);
+  }
+
+  Future<void> cacheProperties() async {
+    final box = Hive.box<Property>('properties');
+    await box.clear(); // Clear previous cache
+    await box.addAll(_properties); // Add all properties to cache
+    log.info("Properties cached successfully.");
+  }
+
   void _setLoading(bool loading) {
     _isLoading = loading;
     notifyListeners();
+  }
+
+  Property? getPropertyById(int id) {
+    return _properties.firstWhere((property) => property.id == id);
   }
 }

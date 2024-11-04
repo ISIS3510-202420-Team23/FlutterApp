@@ -1,7 +1,11 @@
+import 'package:andlet/view_models/user_action_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'dart:io';
+
+import '../../../analytics/analytics_engine.dart';
 
 class PropertyDetailView extends StatefulWidget {
   final String title;
@@ -69,28 +73,34 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                           CarouselSlider(
                             items: widget.imageUrls.isNotEmpty
                                 ? widget.imageUrls.map((item) {
-                              return ClipRRect(
-                                child: Image.network(
-                                  item,
-                                  fit: BoxFit.cover,
-                                  width: double.infinity,
-                                ),
-                              );
-                            }).toList()
+                                    return ClipRRect(
+                                      child: item.startsWith('http')
+                                          ? Image.network(
+                                              item,
+                                              fit: BoxFit.cover,
+                                              width: double.infinity,
+                                            )
+                                          : Image.file(
+                                              File(item),
+                                              fit: BoxFit.cover,
+                                              width: double.infinity,
+                                            ),
+                                    );
+                                  }).toList()
                                 : [
-                              Center(
-                                child: Text(
-                                  'No images available',
-                                  style: TextStyle(
-                                    fontSize: 18.sp, // Responsive font size
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                              )
-                            ], // Fallback when the image list is empty
+                                    Center(
+                                      child: Text(
+                                        'No images available',
+                                        style: TextStyle(
+                                          fontSize: 18.sp,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.black,
+                                        ),
+                                      ),
+                                    )
+                                  ],
                             options: CarouselOptions(
-                              height: 400.h, // Responsive height
+                              height: 400.h,
                               viewportFraction: 1.0,
                               enableInfiniteScroll: false,
                               autoPlay: true,
@@ -110,10 +120,8 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                             right: 0,
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children: widget.imageUrls
-                                  .asMap()
-                                  .entries
-                                  .map((entry) {
+                              children:
+                                  widget.imageUrls.asMap().entries.map((entry) {
                                 return GestureDetector(
                                   child: Container(
                                     width: 10.w, // Responsive width
@@ -149,25 +157,29 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                               ),
                             ),
                             SizedBox(height: 10.h), // Responsive spacing
-                          Row(
-                            children: [
-                              const Icon(Icons.location_on_outlined, size: 20, color: Colors.black),
-                              SizedBox(width: 5.w), // Responsive spacing
-                              Expanded( // Use Expanded to allow the text to wrap
-                                child: Text(
-                                  widget.address,
-                                  style: TextStyle(
-                                    fontFamily: 'League Spartan',
-                                    fontWeight: FontWeight.w300,
-                                    fontSize: 19.sp, // Responsive font size
-                                    color: Colors.black,
+                            Row(
+                              children: [
+                                const Icon(Icons.location_on_outlined,
+                                    size: 20, color: Colors.black),
+                                SizedBox(width: 5.w), // Responsive spacing
+                                Expanded(
+                                  // Use Expanded to allow the text to wrap
+                                  child: Text(
+                                    widget.address,
+                                    style: TextStyle(
+                                      fontFamily: 'League Spartan',
+                                      fontWeight: FontWeight.w300,
+                                      fontSize: 19.sp, // Responsive font size
+                                      color: Colors.black,
+                                    ),
+                                    maxLines:
+                                        2, // Allow the text to wrap into 2 lines if needed
+                                    overflow: TextOverflow
+                                        .ellipsis, // Handle text overflow
                                   ),
-                                  maxLines: 2, // Allow the text to wrap into 2 lines if needed
-                                  overflow: TextOverflow.ellipsis, // Handle text overflow
                                 ),
-                              ),
-                            ],
-                          ),
+                              ],
+                            ),
                             SizedBox(height: 20.h), // Responsive spacing
                             Text(
                               'Facilities',
@@ -233,7 +245,7 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                           backgroundImage: widget.agentPhoto.isNotEmpty
                               ? NetworkImage(widget.agentPhoto)
                               : const AssetImage('lib/assets/personaicono.png')
-                          as ImageProvider,
+                                  as ImageProvider,
                           radius: 25.r, // Responsive avatar size
                         ),
                         SizedBox(width: 10.w), // Space between avatar and text
@@ -278,10 +290,16 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                           setState(() {
                             showContactDetails = !showContactDetails;
                           });
+
+                          // Analytics
+                          AnalyticsEngine.logContactButtonPressed();
+                          UserActionsViewModel()
+                              .addUserAction(widget.userEmail, 'contact');
                         },
                         child: Text(
                           'Contact',
-                          style: TextStyle(fontSize: 16.sp, color: Colors.white),
+                          style:
+                              TextStyle(fontSize: 16.sp, color: Colors.white),
                         ),
                       ),
                     ),
@@ -295,17 +313,25 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
                   width: MediaQuery.of(context).size.width, // Ensure full width
                   padding: EdgeInsets.all(10.w), // Responsive padding
                   child: Column(
-                    mainAxisSize: MainAxisSize.min, // Ensures the column doesn't take infinite height
+                    mainAxisSize: MainAxisSize
+                        .min, // Ensures the column doesn't take infinite height
                     children: [
                       // Displaying only the email, without the extra 'Contact Agent' button
                       SizedBox(
-                        width: MediaQuery.of(context).size.width * 0.9, // Set the width relative to screen
+                        width: MediaQuery.of(context).size.width *
+                            0.9, // Set the width relative to screen
                         child: GestureDetector(
-                          onTap: () => _openEmailClient(
-                            widget.agentEmail, // Email address of the agent
-                            widget.title, // Property title
-                            getFirstAndLastName(widget.agentName), // Agent name
-                          ),
+                          onTap: () {
+                            _openEmailClient(
+                              widget.agentEmail, // Email address of the agent
+                              widget.title, // Property title
+                              getFirstAndLastName(
+                                  widget.agentName), // Agent name
+                            );
+                            // Analytics
+                            UserActionsViewModel().addUserAction(
+                                widget.agentEmail, 'landlordContacted');
+                          },
                           child: Text(
                             'Email: ${widget.agentEmail}',
                             textAlign: TextAlign.center,
@@ -386,7 +412,8 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
       query: 'subject=$encodedSubject&body=$encodedBody',
     );
 
-    final BuildContext currentContext = context; // Save context before async call
+    final BuildContext currentContext =
+        context; // Save context before async call
 
     try {
       if (await canLaunchUrl(emailUri)) {
