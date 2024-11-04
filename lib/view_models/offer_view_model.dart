@@ -326,6 +326,15 @@ class OfferViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+
+  Future<void> cacheOffers() async {
+    final box = Hive.box<OfferProperty>('offer_properties');
+    await box.clear(); // Clear previous cache
+    await box.addAll(_offersWithProperties); // Add all offers with properties to cache
+    log.info("Offers cached successfully.");
+  }
+
+
   /// Apply filters on offers and properties
   bool _applyFilters(
       Offer offer,

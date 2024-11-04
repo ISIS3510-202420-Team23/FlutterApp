@@ -1,10 +1,14 @@
+import 'dart:async';
 import 'dart:io';
-import 'package:andlet/analytics/analytics_engine.dart';
-import 'package:andlet/view_models/user_action_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
+import 'package:andlet/analytics/analytics_engine.dart';
+import 'package:andlet/view_models/user_action_view_model.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:logging/logging.dart';
+
 import '../../../connectivity/connectivity_service.dart';
 import 'filter_modal.dart';
 import 'property_card.dart';
@@ -13,9 +17,7 @@ import '../../../view_models/property_view_model.dart';
 import '../../../view_models/user_view_model.dart';
 import '../../../view/property_details/views/property_detail_view.dart';
 import 'package:andlet/models/entities/offer_property.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:andlet/models/entities/user.dart';
-import 'package:logging/logging.dart';
 
 class ExploreView extends StatefulWidget {
   final String displayName;
@@ -60,7 +62,10 @@ class _ExploreViewState extends State<ExploreView> {
   Future<void> _initializeData() async {
     await _initializeConnectivity();
     await _fetchUserPreferences();
-    await _prepareData();
+    _loadFromCache(); // Load cached data first for faster UI updates
+    if (_isConnected) {
+      _loadingFuture = _fetchFreshData(); // Fetch fresh data in background
+    }
   }
 
   Future<void> _initializeConnectivity() async {
@@ -79,43 +84,44 @@ class _ExploreViewState extends State<ExploreView> {
       _isConnected = isConnected;
     });
 
-    if (_isConnected) {
-      log.info('Online - Preparing data with fresh fetch from Firestore');
-      _loadingFuture = _prepareData();
-    } else {
-      log.warning('Offline - Loading cached data');
-      Provider.of<OfferViewModel>(context, listen: false).loadFromCache();
-      Provider.of<PropertyViewModel>(context, listen: false).loadFromCache();
+    if (isConnected) {
+      log.info('Online - Refreshing data from Firestore in background');
+      _fetchFreshData();
     }
   }
 
-  Future<void> _prepareData() async {
+  Future<void> _fetchFreshData() async {
     final propertyViewModel = Provider.of<PropertyViewModel>(context, listen: false);
-
-    // Clear old property images to ensure fresh downloads for updated properties
-    if (_isConnected) {
-      await propertyViewModel.clearLocalImages();
-    }
-
-    // Fetch properties and download images first
-    await propertyViewModel.fetchPropertiesInBatches();
-
-    // After downloading images, fetch offers so they have local image paths
-    await _fetchInitialData();
-  }
-
-  Future<void> _fetchInitialData() async {
     final offerViewModel = Provider.of<OfferViewModel>(context, listen: false);
 
-    log.info('Fetching offers from Firestore');
-    await offerViewModel.fetchOffersWithFilters();
+    // Fetch in the background and update UI once complete
+    await Future.wait([
+      propertyViewModel.fetchPropertiesInBatches(), // Fetch properties in batches
+      offerViewModel.fetchOffersWithFilters() // Fetch offers with filters
+    ]);
+
+    // Clear and refresh cached data
+    await propertyViewModel.cacheProperties();
+    await offerViewModel.cacheOffers();
+
+    setState(() {}); // Trigger rebuild to reflect fresh data
+  }
+
+  Future<void> _loadFromCache() async {
+    final propertyViewModel = Provider.of<PropertyViewModel>(context, listen: false);
+    final offerViewModel = Provider.of<OfferViewModel>(context, listen: false);
+
+    await Future.wait([
+      propertyViewModel.loadFromCache(),
+      offerViewModel.loadFromCache()
+    ]);
+    setState(() {}); // Update the UI to reflect cached data
   }
 
   Future<void> _fetchUserPreferences() async {
     try {
       log.info('Fetching user roommate preferences for ${widget.userEmail}');
-      var userPreferences =
-      await Provider.of<OfferViewModel>(context, listen: false)
+      var userPreferences = await Provider.of<OfferViewModel>(context, listen: false)
           .fetchUserRoommatePreferences(widget.userEmail);
       setState(() {
         userRoommatePreference = userPreferences;
@@ -126,16 +132,29 @@ class _ExploreViewState extends State<ExploreView> {
     }
   }
 
-  void _applyFilters(
-      double? price, double? minutes, DateTimeRange? dateRange) async {
+  List<OfferProperty> _sortOffers(List<OfferProperty> offers) {
+    if (userRoommatePreference == null) return offers;
+
+    offers.sort((a, b) {
+      if (userRoommatePreference == true) {
+        return b.offer.roommates.compareTo(a.offer.roommates);
+      } else {
+        return a.offer.roommates.compareTo(b.offer.roommates);
+      }
+    });
+
+    log.info('Offers sorted based on roommate preference: $userRoommatePreference');
+    return offers;
+  }
+
+  void _applyFilters(double? price, double? minutes, DateTimeRange? dateRange) async {
     setState(() {
       selectedPrice = price;
       selectedMinutes = minutes;
       selectedDateRange = dateRange;
     });
 
-    log.info(
-        'Applying filters: price=$price, minutes=$minutes, dateRange=$dateRange');
+    log.info('Applying filters: price=$price, minutes=$minutes, dateRange=$dateRange');
     final offerViewModel = Provider.of<OfferViewModel>(context, listen: false);
     if (_isConnected) {
       await offerViewModel.fetchOffersWithFilters(
@@ -183,22 +202,6 @@ class _ExploreViewState extends State<ExploreView> {
     );
   }
 
-  List<OfferProperty> _sortOffers(List<OfferProperty> offers) {
-    if (userRoommatePreference == null) return offers;
-
-    offers.sort((a, b) {
-      if (userRoommatePreference == true) {
-        return b.offer.roommates.compareTo(a.offer.roommates);
-      } else {
-        return a.offer.roommates.compareTo(b.offer.roommates);
-      }
-    });
-
-    log.info(
-        'Offers sorted based on roommate preference: $userRoommatePreference');
-    return offers;
-  }
-
   void _navigateToPropertyDetailView(OfferProperty offerProperty) async {
     final userViewModel = Provider.of<UserViewModel>(context, listen: false);
     final offer = offerProperty.offer;
@@ -224,7 +227,6 @@ class _ExploreViewState extends State<ExploreView> {
     final agentEmail = agent?.email ?? 'Not Available';
     final agentPhoto = agent?.photo ?? '';
 
-    // Ensure photos are local paths before passing to PropertyDetailView
     List<String> localImagePaths =
     property.photos.where((path) => File(path).existsSync()).toList();
 
@@ -234,7 +236,7 @@ class _ExploreViewState extends State<ExploreView> {
         builder: (context) => PropertyDetailView(
           title: property.title,
           address: property.address,
-          imageUrls: localImagePaths, // Pass only valid local paths
+          imageUrls: localImagePaths,
           rooms: offer.num_rooms.toString(),
           bathrooms: offer.num_baths.toString(),
           roommates: offer.roommates.toString(),
@@ -420,7 +422,7 @@ class _ExploreViewState extends State<ExploreView> {
                 Expanded(
                   child: RefreshIndicator(
                     onRefresh: _isConnected
-                        ? _prepareData
+                        ? _fetchFreshData
                         : () async => _showOfflineSnackbar(),
                     child:
                     (propertyViewModel.isLoading || offerViewModel.isLoading) &&

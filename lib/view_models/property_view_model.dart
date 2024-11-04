@@ -170,6 +170,13 @@ class PropertyViewModel extends ChangeNotifier {
     await box.addAll(_properties);
   }
 
+  Future<void> cacheProperties() async {
+    final box = Hive.box<Property>('properties');
+    await box.clear(); // Clear previous cache
+    await box.addAll(_properties); // Add all properties to cache
+    log.info("Properties cached successfully.");
+  }
+
   void _setLoading(bool loading) {
     _isLoading = loading;
     notifyListeners();
