@@ -46,3 +46,6 @@ app.*.map.json
 
 .env
 .vscode
+
+# Include
+!/build/app/outputs/flutter-apk/app-release.apk
