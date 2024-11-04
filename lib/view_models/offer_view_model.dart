@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:andlet/models/entities/offer_property.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +9,10 @@ import '../connectivity/connectivity_service.dart';
 import '../models/entities/offer.dart';
 import '../models/entities/property.dart';
 import '../models/entities/user.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:dio/dio.dart';
+import 'property_view_model.dart';
+
 
 class OfferViewModel extends ChangeNotifier {
   List<OfferProperty> _offersWithProperties = [];
@@ -17,13 +22,13 @@ class OfferViewModel extends ChangeNotifier {
   static final log = Logger('OfferViewModel');
 
   final CollectionReference _offersRef =
-      FirebaseFirestore.instance.collection('offers');
+  FirebaseFirestore.instance.collection('offers');
   final CollectionReference _propertiesRef =
-      FirebaseFirestore.instance.collection('properties');
+  FirebaseFirestore.instance.collection('properties');
   final CollectionReference _userViewsRef =
-      FirebaseFirestore.instance.collection('user_views');
+  FirebaseFirestore.instance.collection('user_views');
   final CollectionReference _usersRef =
-      FirebaseFirestore.instance.collection('users'); // For agents
+  FirebaseFirestore.instance.collection('users'); // For agents
   final ConnectivityService _connectivityService = ConnectivityService();
 
   List<OfferProperty> get offersWithProperties => _offersWithProperties;
@@ -66,14 +71,14 @@ class OfferViewModel extends ChangeNotifier {
   /// Increment the view counter for a specific offer within a single document
   Future<void> incrementOfferViewCounter(int offerId) async {
     final offerRef =
-        _offersRef.doc('E2amoJzmIbhtLq65ScpY'); // Reference the single document
+    _offersRef.doc('E2amoJzmIbhtLq65ScpY'); // Reference the single document
 
     try {
       DocumentSnapshot offerDoc = await offerRef.get();
 
       if (offerDoc.exists) {
         Map<String, dynamic> offersData =
-            offerDoc.data() as Map<String, dynamic>;
+        offerDoc.data() as Map<String, dynamic>;
 
         if (offersData.containsKey(offerId.toString())) {
           Map<String, dynamic> offerData = offersData[offerId.toString()];
@@ -108,9 +113,9 @@ class OfferViewModel extends ChangeNotifier {
             is_andes: agentSnapshot['is_andes'] ?? false,
             type_user: agentSnapshot['type_user'] ?? '',
             favorite_offers:
-                (agentSnapshot['favorite_offers'] as List<dynamic>?)
-                        ?.cast<int>() ??
-                    [],
+            (agentSnapshot['favorite_offers'] as List<dynamic>?)
+                ?.cast<int>() ??
+                [],
           );
           await box.put(userId, agent); // Cache the fetched agent
         }
@@ -139,12 +144,12 @@ class OfferViewModel extends ChangeNotifier {
       bool isConnected = await _connectivityService.isConnected();
       if (isConnected) {
         DocumentSnapshot propertyDoc =
-            await _propertiesRef.doc('X8qn8e6UXKberOSYZnXk').get();
+        await _propertiesRef.doc('X8qn8e6UXKberOSYZnXk').get();
         Map<String, Property> propertyMap =
-            _mapSnapshotToProperties(propertyDoc);
+        await _mapSnapshotToProperties(propertyDoc);
 
         DocumentSnapshot offersDoc =
-            await _offersRef.doc('E2amoJzmIbhtLq65ScpY').get();
+        await _offersRef.doc('E2amoJzmIbhtLq65ScpY').get();
         if (offersDoc.exists && offersDoc.data() != null) {
           var offersData = offersDoc.data() as Map<String, dynamic>;
           List<OfferProperty> tempOffersWithProperties = [];
@@ -156,16 +161,10 @@ class OfferViewModel extends ChangeNotifier {
               Property? property = propertyMap[propertyId];
 
               if (property != null) {
-                // Update property photos with local paths
-                for (int i = 0; i < property.photos.length; i++) {
-                  property.photos[i] =
-                      await _getLocalPathForImage(property.photos[i]);
-                }
-
                 Offer offer = Offer(
                   final_date: (offerData['final_date'] as Timestamp).toDate(),
                   initial_date:
-                      (offerData['initial_date'] as Timestamp).toDate(),
+                  (offerData['initial_date'] as Timestamp).toDate(),
                   user_id: offerData['user_id'],
                   property_id: offerData['id_property'],
                   is_active: offerData['is_active'],
@@ -216,9 +215,78 @@ class OfferViewModel extends ChangeNotifier {
     }
   }
 
-  Future<String> _getLocalPathForImage(String filename) async {
-    final directory = await getApplicationDocumentsDirectory();
-    return '${directory.path}/$filename';
+  Future<Map<String, Property>> _mapSnapshotToProperties(
+      DocumentSnapshot snapshot) async {
+    Map<String, Property> propertyMap = {};
+
+    if (snapshot.exists && snapshot.data() != null) {
+      var propertiesData = snapshot.data() as Map<String, dynamic>;
+      log.info('Mapping properties from data: $propertiesData');
+
+      for (var entry in propertiesData.entries) {
+        try {
+          final propertyId = entry.key;
+          final propertyData = entry.value as Map<String, dynamic>;
+          Property? property =
+          await _createPropertyWithLocalImages(propertyId, propertyData);
+          if (property != null) {
+            propertyMap[propertyId] = property;
+          }
+        } catch (e) {
+          log.warning("Error mapping property with key ${entry.key}: $e");
+        }
+      }
+    } else {
+      log.warning("Property document does not exist or is empty");
+    }
+
+    return propertyMap;
+  }
+
+  Future<Property?> _createPropertyWithLocalImages(
+      String propertyId, Map<String, dynamic> propertyData) async {
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      List<String> photos = List<String>.from(propertyData['photos'] ?? []);
+
+      // Download and cache each image
+      for (int i = 0; i < photos.length; i++) {
+        String filename = photos[i];
+        final filePath = '${directory.path}/$filename';
+        final file = File(filePath);
+
+        // Only download if the image does not exist locally
+        if (!await file.exists()) {
+          try {
+            String url = await FirebaseStorage.instance
+                .ref('properties/$filename')
+                .getDownloadURL();
+            await Dio().download(url, filePath);
+          } catch (e) {
+            log.warning('Failed to download image $filename: $e');
+          }
+        }
+        photos[i] = filePath; // Update with local path
+      }
+
+      GeoPoint geoPoint = propertyData['location'] is GeoPoint
+          ? propertyData['location'] as GeoPoint
+          : const GeoPoint(0, 0);
+
+      return Property(
+        id: int.tryParse(propertyId) ?? 0,
+        address: propertyData['address'] ?? 'No address provided',
+        complex_name: propertyData['complex_name'] ?? 'Unnamed complex',
+        description: propertyData['description'] ?? 'No description provided',
+        location: geoPoint,
+        photos: photos,
+        minutesFromCampus: (propertyData['minutes_from_campus'] as num?)?.toDouble() ?? 0,
+        title: propertyData['title'] ?? 'Untitled Property',
+      );
+    } catch (e) {
+      log.warning('Error creating property with images: $e');
+      return null;
+    }
   }
 
   /// Load offers from cache without clearing it
@@ -244,13 +312,13 @@ class OfferViewModel extends ChangeNotifier {
     final box = Hive.box<OfferProperty>('offer_properties');
     _offersWithProperties = box.values
         .where((offerProperty) => _applyFilters(
-              offerProperty.offer,
-              offerProperty.property,
-              minPrice,
-              maxPrice,
-              maxMinutes,
-              dateRange,
-            ))
+      offerProperty.offer,
+      offerProperty.property,
+      minPrice,
+      maxPrice,
+      maxMinutes,
+      dateRange,
+    ))
         .toList();
 
     log.info(
@@ -258,68 +326,15 @@ class OfferViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Map Firestore snapshot to Property model considering nested structure
-  Map<String, Property> _mapSnapshotToProperties(DocumentSnapshot snapshot) {
-    Map<String, Property> propertyMap = {};
-
-    if (snapshot.exists && snapshot.data() != null) {
-      var propertiesData = snapshot.data() as Map<String, dynamic>;
-      log.info('Mapping properties from data: $propertiesData');
-
-      propertiesData.forEach((key, propertyData) {
-        try {
-          int propertyId = int.tryParse(key) ?? 0;
-
-          double minutesFromCampus;
-          if (propertyData['minutes_from_campus'] is int) {
-            minutesFromCampus =
-                (propertyData['minutes_from_campus'] as int).toDouble();
-          } else if (propertyData['minutes_from_campus'] is double) {
-            minutesFromCampus = propertyData['minutes_from_campus'];
-          } else {
-            minutesFromCampus = 0;
-          }
-
-          String description =
-              propertyData['description'] ?? "No description provided";
-          List<String> photos = List<String>.from(propertyData['photos'] ?? []);
-
-          GeoPoint geoPoint = propertyData['location'] is GeoPoint
-              ? propertyData['location'] as GeoPoint
-              : const GeoPoint(0, 0);
-
-          Property property = Property(
-            id: propertyId,
-            address: propertyData['address'] ?? 'No address provided',
-            complex_name: propertyData['complex_name'] ?? 'Unnamed complex',
-            description: description,
-            location: geoPoint,
-            photos: photos,
-            minutesFromCampus: minutesFromCampus,
-            title: propertyData['title'] ?? 'Untitled Property',
-          );
-
-          propertyMap[propertyId.toString()] = property;
-        } catch (e) {
-          log.warning("Error mapping property with key $key: $e");
-        }
-      });
-    } else {
-      log.warning("Property document does not exist or is empty");
-    }
-
-    return propertyMap;
-  }
-
   /// Apply filters on offers and properties
   bool _applyFilters(
-    Offer offer,
-    Property property,
-    double? minPrice,
-    double? maxPrice,
-    double? maxMinutes,
-    DateTimeRange? dateRange,
-  ) {
+      Offer offer,
+      Property property,
+      double? minPrice,
+      double? maxPrice,
+      double? maxMinutes,
+      DateTimeRange? dateRange,
+      ) {
     minPrice ??= 0;
 
     if (offer.price_per_month < minPrice) return false;

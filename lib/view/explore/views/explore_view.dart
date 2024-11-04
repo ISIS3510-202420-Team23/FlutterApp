@@ -44,6 +44,7 @@ class _ExploreViewState extends State<ExploreView> {
   double? selectedPrice;
   double? selectedMinutes;
   DateTimeRange? selectedDateRange;
+  late Future<void> _loadingFuture;
 
   @override
   void initState() {
@@ -51,14 +52,18 @@ class _ExploreViewState extends State<ExploreView> {
 
     // Analytics
     UserActionsViewModel().addUserAction(widget.userEmail, 'peak');
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeConnectivity();
-      _fetchUserPreferences();
-      _fetchInitialData();
-    });
+
+    // Initialize data loading
+    _loadingFuture = _initializeData();
   }
 
-  void _initializeConnectivity() {
+  Future<void> _initializeData() async {
+    await _initializeConnectivity();
+    await _fetchUserPreferences();
+    await _prepareData();
+  }
+
+  Future<void> _initializeConnectivity() async {
     log.info('Initializing connectivity check...');
     _connectivity.onConnectivityChanged.listen((ConnectivityResult result) {
       log.info('Connectivity changed: $result');
@@ -75,8 +80,8 @@ class _ExploreViewState extends State<ExploreView> {
     });
 
     if (_isConnected) {
-      log.info('Online - Fetching initial data from Firestore');
-      await _fetchInitialData();
+      log.info('Online - Preparing data with fresh fetch from Firestore');
+      _loadingFuture = _prepareData();
     } else {
       log.warning('Offline - Loading cached data');
       Provider.of<OfferViewModel>(context, listen: false).loadFromCache();
@@ -84,22 +89,34 @@ class _ExploreViewState extends State<ExploreView> {
     }
   }
 
+  Future<void> _prepareData() async {
+    final propertyViewModel = Provider.of<PropertyViewModel>(context, listen: false);
+
+    // Clear old property images to ensure fresh downloads for updated properties
+    if (_isConnected) {
+      await propertyViewModel.clearLocalImages();
+    }
+
+    // Fetch properties and download images first
+    await propertyViewModel.fetchPropertiesInBatches();
+
+    // After downloading images, fetch offers so they have local image paths
+    await _fetchInitialData();
+  }
+
   Future<void> _fetchInitialData() async {
     final offerViewModel = Provider.of<OfferViewModel>(context, listen: false);
-    final propertyViewModel =
-        Provider.of<PropertyViewModel>(context, listen: false);
 
-    log.info('Fetching offers and properties from Firestore');
+    log.info('Fetching offers from Firestore');
     await offerViewModel.fetchOffersWithFilters();
-    await propertyViewModel.fetchPropertiesInBatches();
   }
 
   Future<void> _fetchUserPreferences() async {
     try {
       log.info('Fetching user roommate preferences for ${widget.userEmail}');
       var userPreferences =
-          await Provider.of<OfferViewModel>(context, listen: false)
-              .fetchUserRoommatePreferences(widget.userEmail);
+      await Provider.of<OfferViewModel>(context, listen: false)
+          .fetchUserRoommatePreferences(widget.userEmail);
       setState(() {
         userRoommatePreference = userPreferences;
       });
@@ -209,7 +226,7 @@ class _ExploreViewState extends State<ExploreView> {
 
     // Ensure photos are local paths before passing to PropertyDetailView
     List<String> localImagePaths =
-        property.photos.where((path) => File(path).existsSync()).toList();
+    property.photos.where((path) => File(path).existsSync()).toList();
 
     Navigator.push(
       context,
@@ -237,225 +254,235 @@ class _ExploreViewState extends State<ExploreView> {
     final offerViewModel = Provider.of<OfferViewModel>(context);
     final propertyViewModel = Provider.of<PropertyViewModel>(context);
     String firstName = widget.displayName.split(' ').first;
-    final sortedOffers = _sortOffers(offerViewModel.offersWithProperties);
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: Padding(
-        padding: EdgeInsets.all(25.w),
-        child: Column(
-          children: [
-            SizedBox(height: 2.h),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return FutureBuilder<void>(
+      future: _loadingFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final sortedOffers = _sortOffers(offerViewModel.offersWithProperties);
+
+        return Scaffold(
+          backgroundColor: Colors.white,
+          body: Padding(
+            padding: EdgeInsets.all(25.w),
+            child: Column(
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                SizedBox(height: 2.h),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      'Welcome,',
-                      style: TextStyle(
-                        fontFamily: 'League Spartan',
-                        fontSize: 35.sp,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF0C356A),
-                      ),
-                    ),
-                    Text(
-                      firstName,
-                      style: TextStyle(
-                        fontFamily: 'League Spartan',
-                        fontSize: 35.sp,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFFF9A826),
-                      ),
-                    ),
-                  ],
-                ),
-                CircleAvatar(
-                  backgroundImage: widget.photoUrl.isNotEmpty
-                      ? NetworkImage(widget.photoUrl)
-                      : const AssetImage('lib/assets/personaicono.png')
-                          as ImageProvider,
-                  radius: 35.r,
-                ),
-              ],
-            ),
-            SizedBox(height: 20.h),
-            if (!_isConnected)
-              Container(
-                color: Colors.redAccent,
-                padding: const EdgeInsets.all(8.0),
-                child: Row(
-                  children: [
-                    const Icon(Icons.warning, color: Colors.white),
-                    const SizedBox(width: 8.0),
-                    Expanded(
-                        child: Text(
-                            'No Internet Connection, offers will not be updated',
-                            style: TextStyle(
-                                color: Colors.white, fontSize: 14.sp))),
-                  ],
-                ),
-              ),
-            if (!_isConnected) SizedBox(height: 20.h),
-            Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    padding:
-                        EdgeInsets.symmetric(horizontal: 15.w, vertical: 10.h),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFB5D5FF),
-                      borderRadius: BorderRadius.circular(10.r),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 10.r,
-                          spreadRadius: 2.r,
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Welcome,',
+                          style: TextStyle(
+                            fontFamily: 'League Spartan',
+                            fontSize: 35.sp,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF0C356A),
+                          ),
+                        ),
+                        Text(
+                          firstName,
+                          style: TextStyle(
+                            fontFamily: 'League Spartan',
+                            fontSize: 35.sp,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFFF9A826),
+                          ),
                         ),
                       ],
                     ),
-                    child: GestureDetector(
-                      onTap: () {
-                        if (selectedPrice != null ||
-                            selectedMinutes != null ||
-                            selectedDateRange != null) {
-                          _clearFilters();
-                        } else {
-                          _openFilterModal();
-                        }
-                      },
-                      child: Row(
-                        children: [
-                          const Icon(Icons.search, color: Color(0xFF0C356A)),
-                          SizedBox(width: 10.w),
-                          const Expanded(
-                              child: Text('Search for a place...',
-                                  style: TextStyle(color: Color(0xFF0C356A)))),
-                          Icon(
-                            (selectedPrice != null ||
+                    CircleAvatar(
+                      backgroundImage: widget.photoUrl.isNotEmpty
+                          ? NetworkImage(widget.photoUrl)
+                          : const AssetImage('lib/assets/personaicono.png')
+                      as ImageProvider,
+                      radius: 35.r,
+                    ),
+                  ],
+                ),
+                SizedBox(height: 20.h),
+                if (!_isConnected)
+                  Container(
+                    color: Colors.redAccent,
+                    padding: const EdgeInsets.all(8.0),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.warning, color: Colors.white),
+                        const SizedBox(width: 8.0),
+                        Expanded(
+                            child: Text(
+                                'No Internet Connection, offers will not be updated',
+                                style: TextStyle(
+                                    color: Colors.white, fontSize: 14.sp))),
+                      ],
+                    ),
+                  ),
+                if (!_isConnected) SizedBox(height: 20.h),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        padding:
+                        EdgeInsets.symmetric(horizontal: 15.w, vertical: 10.h),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFB5D5FF),
+                          borderRadius: BorderRadius.circular(10.r),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 10.r,
+                              spreadRadius: 2.r,
+                            ),
+                          ],
+                        ),
+                        child: GestureDetector(
+                          onTap: () {
+                            if (selectedPrice != null ||
+                                selectedMinutes != null ||
+                                selectedDateRange != null) {
+                              _clearFilters();
+                            } else {
+                              _openFilterModal();
+                            }
+                          },
+                          child: Row(
+                            children: [
+                              const Icon(Icons.search, color: Color(0xFF0C356A)),
+                              SizedBox(width: 10.w),
+                              const Expanded(
+                                  child: Text('Search for a place...',
+                                      style: TextStyle(color: Color(0xFF0C356A)))),
+                              Icon(
+                                (selectedPrice != null ||
                                     selectedMinutes != null ||
                                     selectedDateRange != null)
-                                ? Icons.close
-                                : Icons.menu,
-                            color: const Color(0xFF0C356A),
+                                    ? Icons.close
+                                    : Icons.menu,
+                                color: const Color(0xFF0C356A),
+                              ),
+                            ],
                           ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (selectedPrice != null ||
+                    selectedMinutes != null ||
+                    selectedDateRange != null)
+                  Padding(
+                    padding: EdgeInsets.symmetric(vertical: 5.h),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          if (selectedPrice != null)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8.0),
+                              child: Chip(
+                                  label: Text('Price: \$${selectedPrice!.toInt()}',
+                                      style: const TextStyle(
+                                          color: Color(0xFF0C356A))),
+                                  backgroundColor: const Color(0xFFB5D5FF)),
+                            ),
+                          if (selectedMinutes != null)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8.0),
+                              child: Chip(
+                                  label: Text(
+                                      'Minutes: ${selectedMinutes!.toInt()}',
+                                      style: const TextStyle(
+                                          color: Color(0xFF0C356A))),
+                                  backgroundColor: const Color(0xFFB5D5FF)),
+                            ),
+                          if (selectedDateRange != null)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8.0),
+                              child: Chip(
+                                label: Text(
+                                    'Dates: ${DateFormat('MM/dd').format(selectedDateRange!.start)} - ${DateFormat('MM/dd').format(selectedDateRange!.end)}',
+                                    style:
+                                    const TextStyle(color: Color(0xFF0C356A))),
+                                backgroundColor: const Color(0xFFB5D5FF),
+                              ),
+                            ),
                         ],
                       ),
                     ),
                   ),
+                SizedBox(height: 10.h),
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: _isConnected
+                        ? _prepareData
+                        : () async => _showOfflineSnackbar(),
+                    child:
+                    (propertyViewModel.isLoading || offerViewModel.isLoading) &&
+                        sortedOffers.isEmpty
+                        ? const Center(child: CircularProgressIndicator())
+                        : sortedOffers.isEmpty
+                        ? const Center(
+                        child: Text('No properties match your filters.',
+                            style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF0C356A))))
+                        : ListView.builder(
+                      itemCount: sortedOffers.length,
+                      itemBuilder: (context, index) {
+                        final offerWithProperty = sortedOffers[index];
+                        final offer = offerWithProperty.offer;
+                        final property = offerWithProperty.property;
+
+                        return GestureDetector(
+                          onTap: () => _navigateToPropertyDetailView(
+                              offerWithProperty),
+                          child: PropertyCard(
+                            imageUrls:
+                            property.photos, // Local image paths
+                            title: property.title,
+                            address: property.address,
+                            rooms: offer.num_rooms.toString(),
+                            baths: offer.num_baths.toString(),
+                            roommates: offer.roommates.toString(),
+                            price: offer.price_per_month.toString(),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
                 ),
               ],
             ),
-            if (selectedPrice != null ||
-                selectedMinutes != null ||
-                selectedDateRange != null)
-              Padding(
-                padding: EdgeInsets.symmetric(vertical: 5.h),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      if (selectedPrice != null)
-                        Padding(
-                          padding: const EdgeInsets.only(right: 8.0),
-                          child: Chip(
-                              label: Text('Price: \$${selectedPrice!.toInt()}',
-                                  style: const TextStyle(
-                                      color: Color(0xFF0C356A))),
-                              backgroundColor: const Color(0xFFB5D5FF)),
-                        ),
-                      if (selectedMinutes != null)
-                        Padding(
-                          padding: const EdgeInsets.only(right: 8.0),
-                          child: Chip(
-                              label: Text(
-                                  'Minutes: ${selectedMinutes!.toInt()}',
-                                  style: const TextStyle(
-                                      color: Color(0xFF0C356A))),
-                              backgroundColor: const Color(0xFFB5D5FF)),
-                        ),
-                      if (selectedDateRange != null)
-                        Padding(
-                          padding: const EdgeInsets.only(right: 8.0),
-                          child: Chip(
-                            label: Text(
-                                'Dates: ${DateFormat('MM/dd').format(selectedDateRange!.start)} - ${DateFormat('MM/dd').format(selectedDateRange!.end)}',
-                                style:
-                                    const TextStyle(color: Color(0xFF0C356A))),
-                            backgroundColor: const Color(0xFFB5D5FF),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            SizedBox(height: 10.h),
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: _isConnected
-                    ? _fetchInitialData
-                    : () async => _showOfflineSnackbar(),
-                child:
-                    (propertyViewModel.isLoading || offerViewModel.isLoading) &&
-                            sortedOffers.isEmpty
-                        ? const Center(child: CircularProgressIndicator())
-                        : sortedOffers.isEmpty
-                            ? const Center(
-                                child: Text('No properties match your filters.',
-                                    style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFF0C356A))))
-                            : ListView.builder(
-                                itemCount: sortedOffers.length,
-                                itemBuilder: (context, index) {
-                                  final offerWithProperty = sortedOffers[index];
-                                  final offer = offerWithProperty.offer;
-                                  final property = offerWithProperty.property;
-
-                                  return GestureDetector(
-                                    onTap: () => _navigateToPropertyDetailView(
-                                        offerWithProperty),
-                                    child: PropertyCard(
-                                      imageUrls:
-                                          property.photos, // Local image paths
-                                      title: property.title,
-                                      address: property.address,
-                                      rooms: offer.num_rooms.toString(),
-                                      baths: offer.num_baths.toString(),
-                                      roommates: offer.roommates.toString(),
-                                      price: offer.price_per_month.toString(),
-                                    ),
-                                  );
-                                },
-                              ),
-              ),
-            ),
-          ],
-        ),
-      ),
-      bottomNavigationBar: NavigationBar(
-        onDestinationSelected: (int index) {
-          setState(() {
-            currentPageIndex = index;
-          });
-        },
-        indicatorColor: const Color(0xFFB5D5FF),
-        backgroundColor: Colors.white,
-        selectedIndex: currentPageIndex,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.explore, color: Color(0xFF0C356A)),
-            label: 'Explore',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.home, color: Color(0xFF0C356A)),
-            label: 'Home',
+          bottomNavigationBar: NavigationBar(
+            onDestinationSelected: (int index) {
+              setState(() {
+                currentPageIndex = index;
+              });
+            },
+            indicatorColor: const Color(0xFFB5D5FF),
+            backgroundColor: Colors.white,
+            selectedIndex: currentPageIndex,
+            destinations: const [
+              NavigationDestination(
+                icon: Icon(Icons.explore, color: Color(0xFF0C356A)),
+                label: 'Explore',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.home, color: Color(0xFF0C356A)),
+                label: 'Home',
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
