@@ -11,8 +11,6 @@ import '../models/entities/property.dart';
 import '../models/entities/user.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:dio/dio.dart';
-import 'property_view_model.dart';
-
 
 class OfferViewModel extends ChangeNotifier {
   List<OfferProperty> _offersWithProperties = [];
@@ -22,13 +20,13 @@ class OfferViewModel extends ChangeNotifier {
   static final log = Logger('OfferViewModel');
 
   final CollectionReference _offersRef =
-  FirebaseFirestore.instance.collection('offers');
+      FirebaseFirestore.instance.collection('offers');
   final CollectionReference _propertiesRef =
-  FirebaseFirestore.instance.collection('properties');
+      FirebaseFirestore.instance.collection('properties');
   final CollectionReference _userViewsRef =
-  FirebaseFirestore.instance.collection('user_views');
+      FirebaseFirestore.instance.collection('user_views');
   final CollectionReference _usersRef =
-  FirebaseFirestore.instance.collection('users'); // For agents
+      FirebaseFirestore.instance.collection('users'); // For agents
   final ConnectivityService _connectivityService = ConnectivityService();
 
   List<OfferProperty> get offersWithProperties => _offersWithProperties;
@@ -71,14 +69,14 @@ class OfferViewModel extends ChangeNotifier {
   /// Increment the view counter for a specific offer within a single document
   Future<void> incrementOfferViewCounter(int offerId) async {
     final offerRef =
-    _offersRef.doc('E2amoJzmIbhtLq65ScpY'); // Reference the single document
+        _offersRef.doc('E2amoJzmIbhtLq65ScpY'); // Reference the single document
 
     try {
       DocumentSnapshot offerDoc = await offerRef.get();
 
       if (offerDoc.exists) {
         Map<String, dynamic> offersData =
-        offerDoc.data() as Map<String, dynamic>;
+            offerDoc.data() as Map<String, dynamic>;
 
         if (offersData.containsKey(offerId.toString())) {
           Map<String, dynamic> offerData = offersData[offerId.toString()];
@@ -113,9 +111,9 @@ class OfferViewModel extends ChangeNotifier {
             is_andes: agentSnapshot['is_andes'] ?? false,
             type_user: agentSnapshot['type_user'] ?? '',
             favorite_offers:
-            (agentSnapshot['favorite_offers'] as List<dynamic>?)
-                ?.cast<int>() ??
-                [],
+                (agentSnapshot['favorite_offers'] as List<dynamic>?)
+                        ?.cast<int>() ??
+                    [],
           );
           await box.put(userId, agent); // Cache the fetched agent
         }
@@ -144,12 +142,12 @@ class OfferViewModel extends ChangeNotifier {
       bool isConnected = await _connectivityService.isConnected();
       if (isConnected) {
         DocumentSnapshot propertyDoc =
-        await _propertiesRef.doc('X8qn8e6UXKberOSYZnXk').get();
+            await _propertiesRef.doc('X8qn8e6UXKberOSYZnXk').get();
         Map<String, Property> propertyMap =
-        await _mapSnapshotToProperties(propertyDoc);
+            await _mapSnapshotToProperties(propertyDoc);
 
         DocumentSnapshot offersDoc =
-        await _offersRef.doc('E2amoJzmIbhtLq65ScpY').get();
+            await _offersRef.doc('E2amoJzmIbhtLq65ScpY').get();
         if (offersDoc.exists && offersDoc.data() != null) {
           var offersData = offersDoc.data() as Map<String, dynamic>;
           List<OfferProperty> tempOffersWithProperties = [];
@@ -164,7 +162,7 @@ class OfferViewModel extends ChangeNotifier {
                 Offer offer = Offer(
                   final_date: (offerData['final_date'] as Timestamp).toDate(),
                   initial_date:
-                  (offerData['initial_date'] as Timestamp).toDate(),
+                      (offerData['initial_date'] as Timestamp).toDate(),
                   user_id: offerData['user_id'],
                   property_id: offerData['id_property'],
                   is_active: offerData['is_active'],
@@ -228,7 +226,7 @@ class OfferViewModel extends ChangeNotifier {
           final propertyId = entry.key;
           final propertyData = entry.value as Map<String, dynamic>;
           Property? property =
-          await _createPropertyWithLocalImages(propertyId, propertyData);
+              await _createPropertyWithLocalImages(propertyId, propertyData);
           if (property != null) {
             propertyMap[propertyId] = property;
           }
@@ -280,7 +278,8 @@ class OfferViewModel extends ChangeNotifier {
         description: propertyData['description'] ?? 'No description provided',
         location: geoPoint,
         photos: photos,
-        minutesFromCampus: (propertyData['minutes_from_campus'] as num?)?.toDouble() ?? 0,
+        minutesFromCampus:
+            (propertyData['minutes_from_campus'] as num?)?.toDouble() ?? 0,
         title: propertyData['title'] ?? 'Untitled Property',
       );
     } catch (e) {
@@ -312,13 +311,13 @@ class OfferViewModel extends ChangeNotifier {
     final box = Hive.box<OfferProperty>('offer_properties');
     _offersWithProperties = box.values
         .where((offerProperty) => _applyFilters(
-      offerProperty.offer,
-      offerProperty.property,
-      minPrice,
-      maxPrice,
-      maxMinutes,
-      dateRange,
-    ))
+              offerProperty.offer,
+              offerProperty.property,
+              minPrice,
+              maxPrice,
+              maxMinutes,
+              dateRange,
+            ))
         .toList();
 
     log.info(
@@ -326,24 +325,23 @@ class OfferViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-
   Future<void> cacheOffers() async {
     final box = Hive.box<OfferProperty>('offer_properties');
     await box.clear(); // Clear previous cache
-    await box.addAll(_offersWithProperties); // Add all offers with properties to cache
+    await box.addAll(
+        _offersWithProperties); // Add all offers with properties to cache
     log.info("Offers cached successfully.");
   }
 
-
   /// Apply filters on offers and properties
   bool _applyFilters(
-      Offer offer,
-      Property property,
-      double? minPrice,
-      double? maxPrice,
-      double? maxMinutes,
-      DateTimeRange? dateRange,
-      ) {
+    Offer offer,
+    Property property,
+    double? minPrice,
+    double? maxPrice,
+    double? maxMinutes,
+    DateTimeRange? dateRange,
+  ) {
     minPrice ??= 0;
 
     if (offer.price_per_month < minPrice) return false;

@@ -20,7 +20,7 @@ class PropertyViewModel extends ChangeNotifier {
 
   static final log = Logger('PropertyViewModel');
   final CollectionReference _propertiesRef =
-  FirebaseFirestore.instance.collection('properties');
+      FirebaseFirestore.instance.collection('properties');
   final ConnectivityService _connectivityService = ConnectivityService();
 
   List<Property> get properties => _properties;
@@ -46,7 +46,9 @@ class PropertyViewModel extends ChangeNotifier {
   }
 
   Future<void> fetchPropertiesInBatches() async {
-    if (_isLoading || _appDocumentsPath == null) return; // Ensure local path is set
+    if (_isLoading || _appDocumentsPath == null) {
+      return; // Ensure local path is set
+    }
     _setLoading(true);
 
     try {
