@@ -142,7 +142,7 @@ class OfferViewModel extends ChangeNotifier {
       bool isConnected = await _connectivityService.isConnected();
       if (isConnected) {
         DocumentSnapshot propertyDoc =
-            await _propertiesRef.doc('X8qn8e6UXKberOSYZnXk').get();
+            await _propertiesRef.doc('VPIeQgk7wcFsZ3kfjAfo').get();
         Map<String, Property> propertyMap =
             await _mapSnapshotToProperties(propertyDoc);
 
