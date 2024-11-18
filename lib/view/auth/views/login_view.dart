@@ -1,6 +1,8 @@
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';  // Import for responsiveness
+import 'package:flutter_screenutil/flutter_screenutil.dart'; // Import for responsiveness
+import '../../../connectivity/connectivity_service.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
@@ -19,17 +21,48 @@ class LoginView extends StatefulWidget {
 
 class LoginViewState extends State<LoginView> {
   bool rememberMe = false; // Variable to track checkbox state
-  final Logger _logger = Logger('LoginView');
+  final Logger log = Logger('LoginView');
+
+  bool _isConnected = true;
+  final ConnectivityService _connectivityService = ConnectivityService();
+  final Connectivity _connectivity = Connectivity();
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeConnectivity();
+  }
+
+  Future<void> _initializeConnectivity() async {
+    log.info('Initializing connectivity check...');
+    _connectivity.onConnectivityChanged.listen((ConnectivityResult result) {
+      log.info('Connectivity changed: $result');
+      _updateConnectionStatus(result);
+    });
+  }
+
+  void _updateConnectionStatus(ConnectivityResult result) async {
+    bool isConnected = result != ConnectivityResult.none &&
+        await _connectivityService.isConnected();
+    log.info('Updated connectivity status: $isConnected');
+    setState(() {
+      _isConnected = isConnected;
+    });
+
+    if (isConnected) {
+      log.info('Online - Refreshing data from Firestore in background');
+    }
+  }
 
   /// Function to check profile type and navigate accordingly
-  Future<void> _checkProfileAndNavigate(
-      BuildContext context, String displayName, String photoUrl, String userEmail) async {
+  Future<void> _checkProfileAndNavigate(BuildContext context,
+      String displayName, String photoUrl, String userEmail) async {
     // Perform the async operation first
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     final profileType = prefs.getString('profileType');
 
     // Ensure the context is still valid after the async operation
-    _logger.info('Profile type: $profileType');
+    log.info('Profile type: $profileType');
     if (context.mounted) {
       if (profileType == 'student') {
         // If user is already a tenant, navigate directly to ExploreView
@@ -61,9 +94,9 @@ class LoginViewState extends State<LoginView> {
 
   Future<void> _clearSession() async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.clear();  // Clear local storage
-    await FirebaseAuth.instance.signOut();  // Sign out from Firebase
-    _logger.info("Session cleared and user signed out.");
+    await prefs.clear(); // Clear local storage
+    await FirebaseAuth.instance.signOut(); // Sign out from Firebase
+    log.info("Session cleared and user signed out.");
   }
 
   @override
@@ -74,13 +107,11 @@ class LoginViewState extends State<LoginView> {
         listener: (context, state) {
           // Check if state is either ProfilePickerSuccess or Authenticated
           if (state is ProfilePickerSuccess) {
-            _logger
-                .info('Authentication successful for user: ${state.userEmail}');
+            log.info('Authentication successful for user: ${state.userEmail}');
             _checkProfileAndNavigate(
                 context, state.displayName, state.photoUrl, state.userEmail);
           } else if (state is Authenticated) {
-            _logger
-                .info('Authentication successful for user: ${state.userEmail}');
+            log.info('Authentication successful for user: ${state.userEmail}');
             _checkProfileAndNavigate(
                 context, state.displayName, state.photoUrl, state.userEmail);
           } else if (state is AuthError) {
@@ -139,11 +170,12 @@ class LoginViewState extends State<LoginView> {
                       // New Member Link with "Register now" in bold
                       GestureDetector(
                         onTap: () async {
-                          _logger.info('Navigating to Google register');
+                          log.info('Navigating to Google register');
                           await _clearSession();
-                          if (context.mounted) { // Clear session when trying to register
-                            BlocProvider.of<AuthBloc>(context).add(
-                                const GoogleSignupRequested());
+                          if (context.mounted) {
+                            // Clear session when trying to register
+                            BlocProvider.of<AuthBloc>(context)
+                                .add(const GoogleSignupRequested());
                           }
                         },
                         child: RichText(
@@ -172,14 +204,20 @@ class LoginViewState extends State<LoginView> {
                       // Google Sign-up Button
                       ElevatedButton.icon(
                         onPressed: () async {
-                          _logger.info('Attempting Google Sign-Up');
+                          if (!_isConnected) {
+                            _showOfflineSnackbar();
+                            return;
+                          }
+
+                          log.info('Attempting Google Sign-Up');
                           await _clearSession();
                           if (context.mounted) {
-                            BlocProvider.of<AuthBloc>(context).add(
-                                const GoogleSignupRequested());
+                            BlocProvider.of<AuthBloc>(context)
+                                .add(const GoogleSignupRequested());
                           }
                         },
-                        icon: Image.asset('lib/assets/google.png', height: 20.h), // Responsive icon size
+                        icon: Image.asset('lib/assets/google.png',
+                            height: 20.h), // Responsive icon size
                         label: Text(
                           'Sign up with Google',
                           style: TextStyle(
@@ -191,9 +229,11 @@ class LoginViewState extends State<LoginView> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
                           padding: EdgeInsets.symmetric(
-                              vertical: 15.h, horizontal: 40.w), // Responsive padding
+                              vertical: 15.h,
+                              horizontal: 40.w), // Responsive padding
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30.r), // Responsive border radius
+                            borderRadius: BorderRadius.circular(
+                                30.r), // Responsive border radius
                           ),
                           elevation: 5,
                         ),
@@ -202,7 +242,8 @@ class LoginViewState extends State<LoginView> {
                       // Divider with 'Or log in with Email'
                       Row(
                         children: [
-                          const Expanded(child: Divider(color: Color(0xFF0C356A))),
+                          const Expanded(
+                              child: Divider(color: Color(0xFF0C356A))),
                           Padding(
                             padding: EdgeInsets.symmetric(horizontal: 10.w),
                             child: Text(
@@ -213,17 +254,25 @@ class LoginViewState extends State<LoginView> {
                                   color: const Color(0xFF0C356A)),
                             ),
                           ),
-                          const Expanded(child: Divider(color: Color(0xFF0C356A))),
+                          const Expanded(
+                              child: Divider(color: Color(0xFF0C356A))),
                         ],
                       ),
                       SizedBox(height: 10.h),
                       // Google Log-in Button
                       ElevatedButton.icon(
                         onPressed: () {
-                          _logger.info('Attempting Google Login');
-                          BlocProvider.of<AuthBloc>(context).add(const GoogleLoginRequested());
+                          if (!_isConnected) {
+                            _showOfflineSnackbar();
+                            return;
+                          }
+
+                          log.info('Attempting Google Login');
+                          BlocProvider.of<AuthBloc>(context)
+                              .add(const GoogleLoginRequested());
                         },
-                        icon: Image.asset('lib/assets/google.png', height: 20.h), // Responsive icon size
+                        icon: Image.asset('lib/assets/google.png',
+                            height: 20.h), // Responsive icon size
                         label: Text(
                           'Log in with Google',
                           style: TextStyle(
@@ -234,9 +283,12 @@ class LoginViewState extends State<LoginView> {
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(vertical: 15.h, horizontal: 40.w), // Responsive padding
+                          padding: EdgeInsets.symmetric(
+                              vertical: 15.h,
+                              horizontal: 40.w), // Responsive padding
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30.r), // Responsive border radius
+                            borderRadius: BorderRadius.circular(
+                                30.r), // Responsive border radius
                           ),
                           elevation: 5,
                         ),
@@ -271,7 +323,8 @@ class LoginViewState extends State<LoginView> {
                 ),
                 // Align the dots at the left-bottom side
                 Padding(
-                  padding: EdgeInsets.only(bottom: 40.h, left: 10.w), // Responsive padding
+                  padding: EdgeInsets.only(
+                      bottom: 40.h, left: 10.w), // Responsive padding
                   child: Align(
                     alignment: Alignment.bottomLeft,
                     child: Row(
@@ -301,6 +354,21 @@ class LoginViewState extends State<LoginView> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  /// Function to show a snackbar when user is offline
+  void _showOfflineSnackbar() {
+    log.warning('User attempted to login while offline.');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        duration: Duration(seconds: 6),
+        content: Text(
+          "You are offline. Can't Login or Sign Up.",
+          style: TextStyle(color: Colors.white),
+        ),
+        backgroundColor: Colors.redAccent,
       ),
     );
   }
