@@ -14,6 +14,7 @@ import 'package:dio/dio.dart';
 
 class OfferViewModel extends ChangeNotifier {
   List<OfferProperty> _offersWithProperties = [];
+  List<OfferProperty> _savedOfferProperties = [];
   bool _isLoading = false;
   bool? userRoommatePreference;
 
@@ -28,9 +29,128 @@ class OfferViewModel extends ChangeNotifier {
   final CollectionReference _usersRef =
       FirebaseFirestore.instance.collection('users'); // For agents
   final ConnectivityService _connectivityService = ConnectivityService();
+  final CollectionReference _userSavedRef =
+      FirebaseFirestore.instance.collection('user_saved');
+  final CollectionReference _propertySavedByRef =
+      FirebaseFirestore.instance.collection('property_saved_by');
 
   List<OfferProperty> get offersWithProperties => _offersWithProperties;
+  List<OfferProperty> get savedOfferProperties => _savedOfferProperties;
+
   bool get isLoading => _isLoading;
+
+  /// Save an offer for a user
+  Future<void> saveOffer(String userEmail, int offerId) async {
+    try {
+      DateTime now = DateTime.now();
+
+      // Save in `user_saved` collection
+      await _userSavedRef.doc(userEmail).set(
+        {offerId.toString(): Timestamp.fromDate(now)},
+        SetOptions(merge: true), // Merge to preserve existing data
+      );
+
+      // Save in `property_saved_by` collection
+      await _propertySavedByRef.doc(offerId.toString()).set(
+        {userEmail: Timestamp.fromDate(now)},
+        SetOptions(merge: true),
+      );
+
+      log.info('Offer $offerId saved for user $userEmail successfully.');
+    } catch (e, stackTrace) {
+      log.severe('Failed to save offer $offerId for user $userEmail: $e', e,
+          stackTrace);
+      throw e; // Propagate the error
+    }
+  }
+
+  /// Unsave an offer for a user
+  Future<void> unsaveOffer(String userEmail, int offerId) async {
+    try {
+      // Remove from user_saved collection
+      await FirebaseFirestore.instance
+          .collection('user_saved')
+          .doc(userEmail)
+          .update({
+        offerId.toString(): FieldValue.delete(),
+      });
+
+      // Remove from property_saved_by collection
+      await FirebaseFirestore.instance
+          .collection('property_saved_by')
+          .doc(offerId.toString())
+          .update({
+        userEmail: FieldValue.delete(),
+      });
+
+      // Optionally: Update local state if necessary
+      _savedOfferProperties.removeWhere(
+          (offerProperty) => offerProperty.offer.offerId == offerId);
+
+      notifyListeners();
+
+      print('Offer $offerId unsaved successfully for user $userEmail');
+    } catch (e) {
+      print('Failed to unsave offer: $e');
+      throw Exception('Failed to unsave offer');
+    }
+  }
+
+  Future<void> fetchSavedPropertiesForUser(String userEmail) async {
+    try {
+      _setLoading(true);
+
+      // Fetch saved offer IDs from Firestore
+      DocumentSnapshot userDoc = await _userSavedRef.doc(userEmail).get();
+      if (!userDoc.exists) {
+        log.warning('No saved offers found for user $userEmail');
+        _savedOfferProperties = [];
+        return;
+      }
+
+      final Map<String, dynamic> savedData =
+          userDoc.data() as Map<String, dynamic>;
+      List<int> savedOfferIds =
+          savedData.keys.map((id) => int.parse(id)).toList();
+
+      log.info('Saved Offer IDs for user $userEmail: $savedOfferIds');
+
+      // Ensure all offers and properties are fetched
+      await fetchOffersWithFilters();
+
+      // Filter the offers by saved IDs
+      _savedOfferProperties = _offersWithProperties
+          .where((offerProperty) =>
+              savedOfferIds.contains(offerProperty.offer.offerId))
+          .toList();
+
+      log.info('Mapped Saved OfferProperties: $_savedOfferProperties');
+    } catch (e) {
+      log.severe('Error fetching saved properties for user $userEmail: $e');
+      _savedOfferProperties = [];
+    } finally {
+      _setLoading(false);
+      notifyListeners();
+    }
+  }
+
+  List<OfferProperty> getFilteredSavedProperties({
+    double? minPrice,
+    double? maxPrice,
+    double? maxMinutes,
+    DateTimeRange? dateRange,
+  }) {
+    return _savedOfferProperties.where((offerProperty) {
+      return _applyFilters(
+        offerProperty.offer,
+        offerProperty.property,
+        minPrice,
+        maxPrice,
+        maxMinutes,
+        dateRange,
+      );
+    }).toList();
+  }
 
   /// Fetch user's roommate preferences
   Future<bool?> fetchUserRoommatePreferences(String userEmail) async {
