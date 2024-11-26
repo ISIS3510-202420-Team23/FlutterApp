@@ -8,6 +8,7 @@ import '../../../view_models/offer_view_model.dart';
 import '../../../view_models/user_view_model.dart';
 import '../../../models/entities/offer_property.dart';
 import '../../../models/entities/user.dart';
+import '../../profile/views/profile.dart';
 import '../../property_details/views/property_detail_view.dart';
 import '../../explore/views/property_card.dart';
 import '../../explore/views/filter_modal.dart';
@@ -46,6 +47,19 @@ class _SavedPropertiesViewState extends State<SavedPropertiesView> {
   Future<void> _initializeData() async {
     await Provider.of<OfferViewModel>(context, listen: false)
         .fetchSavedPropertiesForUser(widget.userEmail);
+  }
+
+  void _navigateToProfileView() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProfileView(
+          displayName: widget.displayName,
+          userEmail: widget.userEmail,
+          photoUrl: widget.photoUrl,
+        ),
+      ),
+    );
   }
 
   /// Clear applied filters
@@ -191,12 +205,15 @@ class _SavedPropertiesViewState extends State<SavedPropertiesView> {
                         ),
                       ],
                     ),
-                    CircleAvatar(
-                      backgroundImage: widget.photoUrl.isNotEmpty
-                          ? NetworkImage(widget.photoUrl)
-                          : const AssetImage('lib/assets/personaicono.png')
-                              as ImageProvider,
-                      radius: 35.r,
+                    GestureDetector(
+                      onTap: _navigateToProfileView,
+                      child: CircleAvatar(
+                        backgroundImage: widget.photoUrl.isNotEmpty
+                            ? NetworkImage(widget.photoUrl)
+                            : const AssetImage('lib/assets/personaicono.png')
+                                as ImageProvider,
+                        radius: 35.r,
+                      ),
                     ),
                   ],
                 ),

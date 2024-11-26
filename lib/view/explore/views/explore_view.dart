@@ -10,6 +10,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:logging/logging.dart';
 
 import '../../../connectivity/connectivity_service.dart';
+import '../../profile/views/profile.dart';
 import '../../saved_properties/views/saved_properties.dart';
 import 'filter_modal.dart';
 import 'property_card.dart';
@@ -93,7 +94,7 @@ class _ExploreViewState extends State<ExploreView> {
 
   Future<void> _fetchFreshData() async {
     final propertyViewModel =
-    Provider.of<PropertyViewModel>(context, listen: false);
+        Provider.of<PropertyViewModel>(context, listen: false);
     final offerViewModel = Provider.of<OfferViewModel>(context, listen: false);
 
     // Fetch in the background and update UI once complete
@@ -112,7 +113,7 @@ class _ExploreViewState extends State<ExploreView> {
 
   Future<void> _loadFromCache() async {
     final propertyViewModel =
-    Provider.of<PropertyViewModel>(context, listen: false);
+        Provider.of<PropertyViewModel>(context, listen: false);
     final offerViewModel = Provider.of<OfferViewModel>(context, listen: false);
 
     await Future.wait(
@@ -124,8 +125,8 @@ class _ExploreViewState extends State<ExploreView> {
     try {
       log.info('Fetching user roommate preferences for ${widget.userEmail}');
       var userPreferences =
-      await Provider.of<OfferViewModel>(context, listen: false)
-          .fetchUserRoommatePreferences(widget.userEmail);
+          await Provider.of<OfferViewModel>(context, listen: false)
+              .fetchUserRoommatePreferences(widget.userEmail);
       setState(() {
         userRoommatePreference = userPreferences;
       });
@@ -133,6 +134,19 @@ class _ExploreViewState extends State<ExploreView> {
     } catch (e) {
       log.severe('Error fetching user preferences: $e');
     }
+  }
+
+  void _navigateToProfileView() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProfileView(
+          displayName: widget.displayName,
+          userEmail: widget.userEmail,
+          photoUrl: widget.photoUrl,
+        ),
+      ),
+    );
   }
 
   void _showOfflineSnackbar() {
@@ -198,7 +212,7 @@ class _ExploreViewState extends State<ExploreView> {
     final agentPhoto = agent?.photo ?? '';
 
     List<String> localImagePaths =
-    property.photos.where((path) => File(path).existsSync()).toList();
+        property.photos.where((path) => File(path).existsSync()).toList();
 
     Navigator.push(
       context,
@@ -249,13 +263,13 @@ class _ExploreViewState extends State<ExploreView> {
   }
 
   List<Widget> _pages() => [
-    _buildExplorePage(),
-    SavedPropertiesView(
-      userEmail: widget.userEmail,
-      displayName: widget.displayName,
-      photoUrl: widget.photoUrl,
-    ),
-  ];
+        _buildExplorePage(),
+        SavedPropertiesView(
+          userEmail: widget.userEmail,
+          displayName: widget.displayName,
+          photoUrl: widget.photoUrl,
+        ),
+      ];
 
   Widget _buildExplorePage() {
     final offerViewModel = Provider.of<OfferViewModel>(context);
@@ -295,12 +309,15 @@ class _ExploreViewState extends State<ExploreView> {
                   ),
                 ],
               ),
-              CircleAvatar(
-                backgroundImage: widget.photoUrl.isNotEmpty
-                    ? NetworkImage(widget.photoUrl)
-                    : const AssetImage('lib/assets/personaicono.png')
-                as ImageProvider,
-                radius: 35.r,
+              GestureDetector(
+                onTap: _navigateToProfileView,
+                child: CircleAvatar(
+                  backgroundImage: widget.photoUrl.isNotEmpty
+                      ? NetworkImage(widget.photoUrl)
+                      : const AssetImage('lib/assets/personaicono.png')
+                          as ImageProvider,
+                  radius: 35.r,
+                ),
               ),
             ],
           ),
@@ -316,8 +333,8 @@ class _ExploreViewState extends State<ExploreView> {
                   Expanded(
                       child: Text(
                           'No Internet Connection, offers will not be updated',
-                          style: TextStyle(
-                              color: Colors.white, fontSize: 14.sp))),
+                          style:
+                              TextStyle(color: Colors.white, fontSize: 14.sp))),
                 ],
               ),
             ),
@@ -326,8 +343,8 @@ class _ExploreViewState extends State<ExploreView> {
             children: [
               Expanded(
                 child: Container(
-                  padding: EdgeInsets.symmetric(
-                      horizontal: 15.w, vertical: 10.h),
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 15.w, vertical: 10.h),
                   decoration: BoxDecoration(
                     color: const Color(0xFFB5D5FF),
                     borderRadius: BorderRadius.circular(10.r),
@@ -351,17 +368,15 @@ class _ExploreViewState extends State<ExploreView> {
                     },
                     child: Row(
                       children: [
-                        const Icon(Icons.search,
-                            color: Color(0xFF0C356A)),
+                        const Icon(Icons.search, color: Color(0xFF0C356A)),
                         SizedBox(width: 10.w),
                         const Expanded(
                             child: Text('Search for a place...',
-                                style:
-                                TextStyle(color: Color(0xFF0C356A)))),
+                                style: TextStyle(color: Color(0xFF0C356A)))),
                         Icon(
                           (selectedPrice != null ||
-                              selectedMinutes != null ||
-                              selectedDateRange != null)
+                                  selectedMinutes != null ||
+                                  selectedDateRange != null)
                               ? Icons.close
                               : Icons.menu,
                           color: const Color(0xFF0C356A),
@@ -386,20 +401,18 @@ class _ExploreViewState extends State<ExploreView> {
                       Padding(
                         padding: const EdgeInsets.only(right: 8.0),
                         child: Chip(
-                            label: Text(
-                                'Price: \$${selectedPrice!.toInt()}',
-                                style: const TextStyle(
-                                    color: Color(0xFF0C356A))),
+                            label: Text('Price: \$${selectedPrice!.toInt()}',
+                                style:
+                                    const TextStyle(color: Color(0xFF0C356A))),
                             backgroundColor: const Color(0xFFB5D5FF)),
                       ),
                     if (selectedMinutes != null)
                       Padding(
                         padding: const EdgeInsets.only(right: 8.0),
                         child: Chip(
-                            label: Text(
-                                'Minutes: ${selectedMinutes!.toInt()}',
-                                style: const TextStyle(
-                                    color: Color(0xFF0C356A))),
+                            label: Text('Minutes: ${selectedMinutes!.toInt()}',
+                                style:
+                                    const TextStyle(color: Color(0xFF0C356A))),
                             backgroundColor: const Color(0xFFB5D5FF)),
                       ),
                     if (selectedDateRange != null)
@@ -408,8 +421,7 @@ class _ExploreViewState extends State<ExploreView> {
                         child: Chip(
                           label: Text(
                               'Dates: ${DateFormat('MM/dd').format(selectedDateRange!.start)} - ${DateFormat('MM/dd').format(selectedDateRange!.end)}',
-                              style: const TextStyle(
-                                  color: Color(0xFF0C356A))),
+                              style: const TextStyle(color: Color(0xFF0C356A))),
                           backgroundColor: const Color(0xFFB5D5FF),
                         ),
                       ),
@@ -424,39 +436,38 @@ class _ExploreViewState extends State<ExploreView> {
                   ? _fetchFreshData
                   : () async => _showOfflineSnackbar(),
               child: (propertyViewModel.isLoading ||
-                  offerViewModel.isLoading) &&
-                  sortedOffers.isEmpty
+                          offerViewModel.isLoading) &&
+                      sortedOffers.isEmpty
                   ? const Center(child: CircularProgressIndicator())
                   : sortedOffers.isEmpty
-                  ? const Center(
-                  child: Text('No properties match your filters.',
-                      style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF0C356A))))
-                  : ListView.builder(
-                itemCount: sortedOffers.length,
-                itemBuilder: (context, index) {
-                  final offerWithProperty = sortedOffers[index];
-                  final offer = offerWithProperty.offer;
-                  final property = offerWithProperty.property;
+                      ? const Center(
+                          child: Text('No properties match your filters.',
+                              style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF0C356A))))
+                      : ListView.builder(
+                          itemCount: sortedOffers.length,
+                          itemBuilder: (context, index) {
+                            final offerWithProperty = sortedOffers[index];
+                            final offer = offerWithProperty.offer;
+                            final property = offerWithProperty.property;
 
-                  return GestureDetector(
-                    onTap: () => _navigateToPropertyDetailView(
-                        offerWithProperty),
-                    child: PropertyCard(
-                      imageUrls:
-                      property.photos, // Local image paths
-                      title: property.title,
-                      address: property.address,
-                      rooms: offer.num_rooms.toString(),
-                      baths: offer.num_baths.toString(),
-                      roommates: offer.roommates.toString(),
-                      price: offer.price_per_month.toString(),
-                    ),
-                  );
-                },
-              ),
+                            return GestureDetector(
+                              onTap: () => _navigateToPropertyDetailView(
+                                  offerWithProperty),
+                              child: PropertyCard(
+                                imageUrls: property.photos, // Local image paths
+                                title: property.title,
+                                address: property.address,
+                                rooms: offer.num_rooms.toString(),
+                                baths: offer.num_baths.toString(),
+                                roommates: offer.roommates.toString(),
+                                price: offer.price_per_month.toString(),
+                              ),
+                            );
+                          },
+                        ),
             ),
           ),
         ],
