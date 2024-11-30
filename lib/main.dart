@@ -47,11 +47,14 @@ Future<void> _initializeApp() async {
   Hive.registerAdapter(GeoPointAdapter());
   Hive.registerAdapter(UserAdapter());
 
+
   await Hive.openBox<Property>('properties');
   await Hive.openBox<User>('agent_cache');
   await Hive.openBox<Offer>('offers');
   await Hive.openBox<OfferProperty>('offer_properties');
   await Hive.openBox<User>('user_cache');
+  await Hive.openBox<OfferProperty>('saved_properties');
+
 
   // Load environment variables from .env file
   await dotenv.load(fileName: ".env");

@@ -33,6 +33,7 @@ class OfferViewModel extends ChangeNotifier {
       FirebaseFirestore.instance.collection('user_saved');
   final CollectionReference _propertySavedByRef =
       FirebaseFirestore.instance.collection('property_saved_by');
+  final _savedPropertiesBox = Hive.box<OfferProperty>('saved_properties');
 
   List<OfferProperty> get offersWithProperties => _offersWithProperties;
   List<OfferProperty> get savedOfferProperties => _savedOfferProperties;
@@ -100,37 +101,59 @@ class OfferViewModel extends ChangeNotifier {
     try {
       _setLoading(true);
 
-      // Fetch saved offer IDs from Firestore
-      DocumentSnapshot userDoc = await _userSavedRef.doc(userEmail).get();
-      if (!userDoc.exists) {
-        log.warning('No saved offers found for user $userEmail');
-        _savedOfferProperties = [];
-        return;
-      }
+      bool isConnected = await _connectivityService.isConnected();
+      if (isConnected) {
+        // Fetch saved property IDs from Firestore
+        DocumentSnapshot userDoc = await _userSavedRef.doc(userEmail).get();
 
-      final Map<String, dynamic> savedData =
+        if (userDoc.exists) {
+          final Map<String, dynamic> savedData =
           userDoc.data() as Map<String, dynamic>;
-      List<int> savedOfferIds =
+          List<int> savedOfferIds =
           savedData.keys.map((id) => int.parse(id)).toList();
 
-      log.info('Saved Offer IDs for user $userEmail: $savedOfferIds');
+          // Fetch all offers and properties
+          await fetchOffersWithFilters();
 
-      // Ensure all offers and properties are fetched
-      await fetchOffersWithFilters();
-
-      // Filter the offers by saved IDs
-      _savedOfferProperties = _offersWithProperties
-          .where((offerProperty) =>
+          // Filter saved properties
+          _savedOfferProperties = _offersWithProperties
+              .where((offerProperty) =>
               savedOfferIds.contains(offerProperty.offer.offerId))
-          .toList();
+              .toList();
 
-      log.info('Mapped Saved OfferProperties: $_savedOfferProperties');
+          // Cache saved properties locally
+          await _cacheSavedProperties();
+        } else {
+          log.warning('No saved properties found for user $userEmail');
+          _savedOfferProperties = [];
+        }
+      } else {
+        log.info('Loading saved properties from local cache');
+        await _loadSavedPropertiesFromCache();
+      }
     } catch (e) {
       log.severe('Error fetching saved properties for user $userEmail: $e');
-      _savedOfferProperties = [];
+      await _loadSavedPropertiesFromCache();
     } finally {
       _setLoading(false);
       notifyListeners();
+    }
+  }
+
+  Future<void> _cacheSavedProperties() async {
+    await _savedPropertiesBox.clear(); // Clear previous cache
+    await _savedPropertiesBox.addAll(_savedOfferProperties);
+    log.info('Cached ${_savedOfferProperties.length} saved properties locally.');
+  }
+
+  /// Load saved properties from local cache
+  Future<void> _loadSavedPropertiesFromCache() async {
+    if (_savedPropertiesBox.isNotEmpty) {
+      _savedOfferProperties = _savedPropertiesBox.values.toList();
+      log.info('Loaded ${_savedOfferProperties.length} saved properties from cache.');
+    } else {
+      log.warning('No cached saved properties available.');
+      _savedOfferProperties = [];
     }
   }
 
