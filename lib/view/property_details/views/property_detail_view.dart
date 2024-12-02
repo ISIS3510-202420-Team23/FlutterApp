@@ -1,4 +1,3 @@
-import 'package:andlet/view_models/user_action_view_model.dart';
 import 'package:flutter/material.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -104,7 +103,7 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
 
     try {
       final offerViewModel =
-      Provider.of<OfferViewModel>(context, listen: false);
+          Provider.of<OfferViewModel>(context, listen: false);
 
       if (isSaved) {
         // Unsave logic

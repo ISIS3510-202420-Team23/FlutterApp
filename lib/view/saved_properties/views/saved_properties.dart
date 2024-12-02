@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -69,7 +68,6 @@ class _SavedPropertiesViewState extends State<SavedPropertiesView> {
     setState(() {
       _isConnected = isConnected;
     });
-
   }
 
   /// Initialize data (load cache or fetch online if connected)
@@ -199,7 +197,7 @@ class _SavedPropertiesViewState extends State<SavedPropertiesView> {
         }
 
         final filteredSavedProperties =
-        offerViewModel.getFilteredSavedProperties(
+            offerViewModel.getFilteredSavedProperties(
           minPrice: selectedPrice,
           maxPrice: null, // Example, adjust as needed
           maxMinutes: selectedMinutes,
@@ -245,7 +243,7 @@ class _SavedPropertiesViewState extends State<SavedPropertiesView> {
                         backgroundImage: widget.photoUrl.isNotEmpty
                             ? NetworkImage(widget.photoUrl)
                             : const AssetImage('lib/assets/personaicono.png')
-                        as ImageProvider,
+                                as ImageProvider,
                         radius: 35.r,
                       ),
                     ),
@@ -265,8 +263,8 @@ class _SavedPropertiesViewState extends State<SavedPropertiesView> {
                         Expanded(
                           child: Text(
                             'No Internet Connection, saved properties will not be updated.',
-                            style: TextStyle(
-                                color: Colors.white, fontSize: 14.sp),
+                            style:
+                                TextStyle(color: Colors.white, fontSize: 14.sp),
                           ),
                         ),
                       ],
@@ -315,8 +313,8 @@ class _SavedPropertiesViewState extends State<SavedPropertiesView> {
                               ),
                               Icon(
                                 (selectedPrice != null ||
-                                    selectedMinutes != null ||
-                                    selectedDateRange != null)
+                                        selectedMinutes != null ||
+                                        selectedDateRange != null)
                                     ? Icons.close
                                     : Icons.menu,
                                 color: const Color(0xFF0C356A),
