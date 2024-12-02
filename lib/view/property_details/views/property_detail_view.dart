@@ -5,9 +5,12 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:io';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:logging/logging.dart';
 
 import '../../../analytics/analytics_engine.dart';
 import '../../../view_models/offer_view_model.dart';
+import '../../../connectivity/connectivity_service.dart';
 
 class PropertyDetailView extends StatefulWidget {
   final String title;
@@ -49,12 +52,38 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
   int _currentPage = 0; // Track current carousel page
   bool showContactDetails = false; // Track whether to show contact details
   bool isSaved = false; // Track if the property is saved
+  bool _isConnected = true; // Track connectivity status
+  final ConnectivityService _connectivityService = ConnectivityService();
+  final Connectivity _connectivity = Connectivity();
+  static final log = Logger('PropertyDetailView');
 
   @override
   void initState() {
     super.initState();
-    _checkIfSaved(
-        widget.userEmail, widget.offerId); // Check saved state on init
+    _initializeConnectivity();
+    _checkIfSaved(widget.userEmail, widget.offerId); // Check saved state
+  }
+
+  /// Initialize connectivity monitoring
+  void _initializeConnectivity() async {
+    final initialStatus = await _connectivity.checkConnectivity();
+    _updateConnectionStatus(initialStatus);
+
+    _connectivity.onConnectivityChanged.listen((ConnectivityResult result) {
+      _updateConnectionStatus(result);
+    });
+  }
+
+  /// Update connection status
+  void _updateConnectionStatus(ConnectivityResult result) async {
+    bool isConnected = result != ConnectivityResult.none &&
+        await _connectivityService.isConnected();
+
+    setState(() {
+      _isConnected = isConnected;
+    });
+
+    log.info('Connectivity status updated: $_isConnected');
   }
 
   /// Check if the property is saved
@@ -66,11 +95,16 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
     });
   }
 
-  /// Save the property
+  /// Save or unsave the property
   Future<void> _toggleSaveOffer(String userEmail, int offerId) async {
+    if (!_isConnected) {
+      _showOfflineSnackbar();
+      return;
+    }
+
     try {
       final offerViewModel =
-          Provider.of<OfferViewModel>(context, listen: false);
+      Provider.of<OfferViewModel>(context, listen: false);
 
       if (isSaved) {
         // Unsave logic
@@ -95,6 +129,19 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
         SnackBar(content: Text('Failed to toggle save state: $e')),
       );
     }
+  }
+
+  /// Show a snackbar when attempting to save while offline
+  void _showOfflineSnackbar() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Save property is not available while offline.',
+          style: TextStyle(color: Colors.white),
+        ),
+        backgroundColor: Colors.redAccent,
+      ),
+    );
   }
 
   String getFirstAndLastName(String fullName) {
@@ -316,13 +363,15 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
 
   Widget _buildSaveButton() {
     return CircleAvatar(
-      backgroundColor: const Color(0xFF0C356A),
+      backgroundColor: _isConnected ? const Color(0xFF0C356A) : Colors.grey,
       child: IconButton(
         icon: Icon(
           isSaved ? Icons.bookmark : Icons.bookmark_border,
           color: Colors.white,
         ),
-        onPressed: () => _toggleSaveOffer(widget.userEmail, widget.offerId),
+        onPressed: _isConnected
+            ? () => _toggleSaveOffer(widget.userEmail, widget.offerId)
+            : _showOfflineSnackbar,
       ),
     );
   }

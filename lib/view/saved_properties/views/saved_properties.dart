@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:logging/logging.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 import '../../../view_models/offer_view_model.dart';
 import '../../../view_models/user_view_model.dart';
 import '../../../models/entities/offer_property.dart';
 import '../../../models/entities/user.dart';
+import '../../../connectivity/connectivity_service.dart';
 import '../../profile/views/profile.dart';
 import '../../property_details/views/property_detail_view.dart';
 import '../../explore/views/property_card.dart';
@@ -32,6 +34,9 @@ class SavedPropertiesView extends StatefulWidget {
 class _SavedPropertiesViewState extends State<SavedPropertiesView> {
   static final log = Logger('SavedPropertiesView');
   late Future<void> _loadingFuture;
+  final ConnectivityService _connectivityService = ConnectivityService();
+  final Connectivity _connectivity = Connectivity();
+  bool _isConnected = true;
 
   double? selectedPrice;
   double? selectedMinutes;
@@ -40,13 +45,41 @@ class _SavedPropertiesViewState extends State<SavedPropertiesView> {
   @override
   void initState() {
     super.initState();
+    _initializeConnectivity();
     _loadingFuture = _initializeData();
   }
 
-  /// Initialize data by fetching saved properties
+  /// Initialize connectivity monitoring and check the initial connection status
+  void _initializeConnectivity() async {
+    // Check initial connectivity
+    final initialStatus = await _connectivity.checkConnectivity();
+    _updateConnectionStatus(initialStatus);
+
+    // Listen for connectivity changes
+    _connectivity.onConnectivityChanged.listen((ConnectivityResult result) {
+      _updateConnectionStatus(result);
+    });
+  }
+
+  /// Update connection status and notify user
+  void _updateConnectionStatus(ConnectivityResult result) async {
+    bool isConnected = result != ConnectivityResult.none &&
+        await _connectivityService.isConnected();
+
+    setState(() {
+      _isConnected = isConnected;
+    });
+
+  }
+
+  /// Initialize data (load cache or fetch online if connected)
   Future<void> _initializeData() async {
-    await Provider.of<OfferViewModel>(context, listen: false)
-        .fetchSavedPropertiesForUser(widget.userEmail);
+    final offerViewModel = Provider.of<OfferViewModel>(context, listen: false);
+    if (_isConnected) {
+      await offerViewModel.fetchSavedPropertiesForUser(widget.userEmail);
+    } else {
+      await offerViewModel.loadFromCache();
+    }
   }
 
   void _navigateToProfileView() {
@@ -160,12 +193,13 @@ class _SavedPropertiesViewState extends State<SavedPropertiesView> {
     return FutureBuilder<void>(
       future: _loadingFuture,
       builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
+        if (snapshot.connectionState != ConnectionState.done ||
+            offerViewModel.isLoading) {
           return const Center(child: CircularProgressIndicator());
         }
 
         final filteredSavedProperties =
-            offerViewModel.getFilteredSavedProperties(
+        offerViewModel.getFilteredSavedProperties(
           minPrice: selectedPrice,
           maxPrice: null, // Example, adjust as needed
           maxMinutes: selectedMinutes,
@@ -211,13 +245,34 @@ class _SavedPropertiesViewState extends State<SavedPropertiesView> {
                         backgroundImage: widget.photoUrl.isNotEmpty
                             ? NetworkImage(widget.photoUrl)
                             : const AssetImage('lib/assets/personaicono.png')
-                                as ImageProvider,
+                        as ImageProvider,
                         radius: 35.r,
                       ),
                     ),
                   ],
                 ),
                 SizedBox(height: 20.h),
+
+                // Connectivity Alert
+                if (!_isConnected)
+                  Container(
+                    color: Colors.redAccent,
+                    padding: const EdgeInsets.all(8.0),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.warning, color: Colors.white),
+                        const SizedBox(width: 8.0),
+                        Expanded(
+                          child: Text(
+                            'No Internet Connection, saved properties will not be updated.',
+                            style: TextStyle(
+                                color: Colors.white, fontSize: 14.sp),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (!_isConnected) SizedBox(height: 20.h),
 
                 // Search/Filter Bar
                 Row(
@@ -260,8 +315,8 @@ class _SavedPropertiesViewState extends State<SavedPropertiesView> {
                               ),
                               Icon(
                                 (selectedPrice != null ||
-                                        selectedMinutes != null ||
-                                        selectedDateRange != null)
+                                    selectedMinutes != null ||
+                                    selectedDateRange != null)
                                     ? Icons.close
                                     : Icons.menu,
                                 color: const Color(0xFF0C356A),
