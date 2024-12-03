@@ -14,6 +14,7 @@ import 'package:dio/dio.dart';
 
 class OfferViewModel extends ChangeNotifier {
   List<OfferProperty> _offersWithProperties = [];
+  List<OfferProperty> _savedOfferProperties = [];
   bool _isLoading = false;
   bool? userRoommatePreference;
 
@@ -28,9 +29,153 @@ class OfferViewModel extends ChangeNotifier {
   final CollectionReference _usersRef =
       FirebaseFirestore.instance.collection('users'); // For agents
   final ConnectivityService _connectivityService = ConnectivityService();
+  final CollectionReference _userSavedRef =
+      FirebaseFirestore.instance.collection('user_saved');
+  final CollectionReference _propertySavedByRef =
+      FirebaseFirestore.instance.collection('property_saved_by');
+  final _savedPropertiesBox = Hive.box<OfferProperty>('saved_properties');
 
   List<OfferProperty> get offersWithProperties => _offersWithProperties;
+  List<OfferProperty> get savedOfferProperties => _savedOfferProperties;
+
   bool get isLoading => _isLoading;
+
+  /// Save an offer for a user
+  Future<void> saveOffer(String userEmail, int offerId) async {
+    try {
+      DateTime now = DateTime.now();
+
+      // Save in `user_saved` collection
+      await _userSavedRef.doc(userEmail).set(
+        {offerId.toString(): Timestamp.fromDate(now)},
+        SetOptions(merge: true), // Merge to preserve existing data
+      );
+
+      // Save in `property_saved_by` collection
+      await _propertySavedByRef.doc(offerId.toString()).set(
+        {userEmail: Timestamp.fromDate(now)},
+        SetOptions(merge: true),
+      );
+
+      log.info('Offer $offerId saved for user $userEmail successfully.');
+    } catch (e, stackTrace) {
+      log.severe('Failed to save offer $offerId for user $userEmail: $e', e,
+          stackTrace);
+      rethrow; // Propagate the error
+    }
+  }
+
+  /// Unsave an offer for a user
+  Future<void> unsaveOffer(String userEmail, int offerId) async {
+    try {
+      // Remove from user_saved collection
+      await FirebaseFirestore.instance
+          .collection('user_saved')
+          .doc(userEmail)
+          .update({
+        offerId.toString(): FieldValue.delete(),
+      });
+
+      // Remove from property_saved_by collection
+      await FirebaseFirestore.instance
+          .collection('property_saved_by')
+          .doc(offerId.toString())
+          .update({
+        userEmail: FieldValue.delete(),
+      });
+
+      // Optionally: Update local state if necessary
+      _savedOfferProperties.removeWhere(
+          (offerProperty) => offerProperty.offer.offerId == offerId);
+
+      notifyListeners();
+
+      log.info('Offer $offerId unsaved successfully for user $userEmail');
+    } catch (e) {
+      log.warning('Failed to unsave offer: $e');
+      throw Exception('Failed to unsave offer');
+    }
+  }
+
+  Future<void> fetchSavedPropertiesForUser(String userEmail) async {
+    try {
+      _setLoading(true);
+
+      bool isConnected = await _connectivityService.isConnected();
+      if (isConnected) {
+        // Fetch saved property IDs from Firestore
+        DocumentSnapshot userDoc = await _userSavedRef.doc(userEmail).get();
+
+        if (userDoc.exists) {
+          final Map<String, dynamic> savedData =
+              userDoc.data() as Map<String, dynamic>;
+          List<int> savedOfferIds =
+              savedData.keys.map((id) => int.parse(id)).toList();
+
+          // Fetch all offers and properties
+          await fetchOffersWithFilters();
+
+          // Filter saved properties
+          _savedOfferProperties = _offersWithProperties
+              .where((offerProperty) =>
+                  savedOfferIds.contains(offerProperty.offer.offerId))
+              .toList();
+
+          // Cache saved properties locally
+          await _cacheSavedProperties();
+        } else {
+          log.warning('No saved properties found for user $userEmail');
+          _savedOfferProperties = [];
+        }
+      } else {
+        log.info('Loading saved properties from local cache');
+        await _loadSavedPropertiesFromCache();
+      }
+    } catch (e) {
+      log.severe('Error fetching saved properties for user $userEmail: $e');
+      await _loadSavedPropertiesFromCache();
+    } finally {
+      _setLoading(false);
+      notifyListeners();
+    }
+  }
+
+  Future<void> _cacheSavedProperties() async {
+    await _savedPropertiesBox.clear(); // Clear previous cache
+    await _savedPropertiesBox.addAll(_savedOfferProperties);
+    log.info(
+        'Cached ${_savedOfferProperties.length} saved properties locally.');
+  }
+
+  /// Load saved properties from local cache
+  Future<void> _loadSavedPropertiesFromCache() async {
+    if (_savedPropertiesBox.isNotEmpty) {
+      _savedOfferProperties = _savedPropertiesBox.values.toList();
+      log.info(
+          'Loaded ${_savedOfferProperties.length} saved properties from cache.');
+    } else {
+      log.warning('No cached saved properties available.');
+      _savedOfferProperties = [];
+    }
+  }
+
+  List<OfferProperty> getFilteredSavedProperties({
+    double? minPrice,
+    double? maxPrice,
+    double? maxMinutes,
+    DateTimeRange? dateRange,
+  }) {
+    return _savedOfferProperties.where((offerProperty) {
+      return _applyFilters(
+        offerProperty.offer,
+        offerProperty.property,
+        minPrice,
+        maxPrice,
+        maxMinutes,
+        dateRange,
+      );
+    }).toList();
+  }
 
   /// Fetch user's roommate preferences
   Future<bool?> fetchUserRoommatePreferences(String userEmail) async {
@@ -152,7 +297,9 @@ class OfferViewModel extends ChangeNotifier {
           var offersData = offersDoc.data() as Map<String, dynamic>;
           List<OfferProperty> tempOffersWithProperties = [];
 
-          for (var entry in offersData.entries) {
+          var entries = offersData.entries.toList();
+          for (var i = 0; i < entries.length; i++) {
+            var entry = entries[i];
             var offerData = entry.value;
             if (offerData['is_active'] == true) {
               String propertyId = offerData['id_property'].toString();
@@ -221,8 +368,10 @@ class OfferViewModel extends ChangeNotifier {
       var propertiesData = snapshot.data() as Map<String, dynamic>;
       log.info('Mapping properties from data: $propertiesData');
 
-      for (var entry in propertiesData.entries) {
+      var entries = propertiesData.entries.toList();
+      for (var i = 0; i < entries.length; i++) {
         try {
+          final entry = entries[i];
           final propertyId = entry.key;
           final propertyData = entry.value as Map<String, dynamic>;
           Property? property =
@@ -231,7 +380,7 @@ class OfferViewModel extends ChangeNotifier {
             propertyMap[propertyId] = property;
           }
         } catch (e) {
-          log.warning("Error mapping property with key ${entry.key}: $e");
+          log.warning("Error mapping property with key ${entries[i].key}: $e");
         }
       }
     } else {

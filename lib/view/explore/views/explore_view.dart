@@ -10,6 +10,8 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:logging/logging.dart';
 
 import '../../../connectivity/connectivity_service.dart';
+import '../../profile/views/profile.dart';
+import '../../saved_properties/views/saved_properties.dart';
 import 'filter_modal.dart';
 import 'property_card.dart';
 import '../../../view_models/offer_view_model.dart';
@@ -36,7 +38,7 @@ class ExploreView extends StatefulWidget {
 }
 
 class _ExploreViewState extends State<ExploreView> {
-  int currentPageIndex = 0;
+  int currentPageIndex = 0; // Track selected page index
   bool? userRoommatePreference;
   bool _isConnected = true;
   final ConnectivityService _connectivityService = ConnectivityService();
@@ -60,9 +62,11 @@ class _ExploreViewState extends State<ExploreView> {
   }
 
   Future<void> _initializeData() async {
-    await _initializeConnectivity();
-    await _fetchUserPreferences();
-    _loadFromCache(); // Load cached data first for faster UI updates
+    await Future.wait([
+      _initializeConnectivity(),
+      _fetchUserPreferences(),
+      _loadFromCache(),
+    ]);
     if (_isConnected) {
       _loadingFuture = _fetchFreshData(); // Fetch fresh data in background
     }
@@ -134,46 +138,27 @@ class _ExploreViewState extends State<ExploreView> {
     }
   }
 
-  List<OfferProperty> _sortOffers(List<OfferProperty> offers) {
-    if (userRoommatePreference == null) return offers;
-
-    offers.sort((a, b) {
-      if (userRoommatePreference == true) {
-        return b.offer.roommates.compareTo(a.offer.roommates);
-      } else {
-        return a.offer.roommates.compareTo(b.offer.roommates);
-      }
-    });
-
-    log.info(
-        'Offers sorted based on roommate preference: $userRoommatePreference');
-    return offers;
+  void _navigateToProfileView() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProfileView(
+          displayName: widget.displayName,
+          userEmail: widget.userEmail,
+          photoUrl: widget.photoUrl,
+        ),
+      ),
+    );
   }
 
-  void _applyFilters(
-      double? price, double? minutes, DateTimeRange? dateRange) async {
-    setState(() {
-      selectedPrice = price;
-      selectedMinutes = minutes;
-      selectedDateRange = dateRange;
-    });
-
-    log.info(
-        'Applying filters: price=$price, minutes=$minutes, dateRange=$dateRange');
-    final offerViewModel = Provider.of<OfferViewModel>(context, listen: false);
-    if (_isConnected) {
-      await offerViewModel.fetchOffersWithFilters(
-        maxPrice: price,
-        maxMinutes: minutes,
-        dateRange: dateRange,
-      );
-    } else {
-      offerViewModel.applyFiltersOnCachedData(
-        maxPrice: price,
-        maxMinutes: minutes,
-        dateRange: dateRange,
-      );
-    }
+  void _showOfflineSnackbar() {
+    log.warning('User attempted to refresh while offline');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+          content: Text('You are offline. Refresh is disabled.',
+              style: TextStyle(color: Colors.white)),
+          backgroundColor: Colors.redAccent),
+    );
   }
 
   void _clearFilters() {
@@ -235,6 +220,7 @@ class _ExploreViewState extends State<ExploreView> {
       context,
       MaterialPageRoute(
         builder: (context) => PropertyDetailView(
+          offerId: offer.offerId,
           title: property.title,
           address: property.address,
           imageUrls: localImagePaths,
@@ -252,12 +238,247 @@ class _ExploreViewState extends State<ExploreView> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
+  void _applyFilters(
+      double? price, double? minutes, DateTimeRange? dateRange) async {
+    setState(() {
+      selectedPrice = price;
+      selectedMinutes = minutes;
+      selectedDateRange = dateRange;
+    });
+
+    log.info(
+        'Applying filters: price=$price, minutes=$minutes, dateRange=$dateRange');
+    final offerViewModel = Provider.of<OfferViewModel>(context, listen: false);
+    if (_isConnected) {
+      await offerViewModel.fetchOffersWithFilters(
+        maxPrice: price,
+        maxMinutes: minutes,
+        dateRange: dateRange,
+      );
+    } else {
+      offerViewModel.applyFiltersOnCachedData(
+        maxPrice: price,
+        maxMinutes: minutes,
+        dateRange: dateRange,
+      );
+    }
+  }
+
+  List<Widget> _pages() => [
+        _buildExplorePage(),
+        SavedPropertiesView(
+          userEmail: widget.userEmail,
+          displayName: widget.displayName,
+          photoUrl: widget.photoUrl,
+        ),
+      ];
+
+  Widget _buildExplorePage() {
     final offerViewModel = Provider.of<OfferViewModel>(context);
     final propertyViewModel = Provider.of<PropertyViewModel>(context);
     String firstName = widget.displayName.split(' ').first;
 
+    final sortedOffers = _sortOffers(offerViewModel.offersWithProperties);
+
+    return Padding(
+      padding: EdgeInsets.all(25.w),
+      child: Column(
+        children: [
+          SizedBox(height: 5.h),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Welcome,',
+                    style: TextStyle(
+                      fontFamily: 'League Spartan',
+                      fontSize: 35.sp,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF0C356A),
+                    ),
+                  ),
+                  Text(
+                    firstName,
+                    style: TextStyle(
+                      fontFamily: 'League Spartan',
+                      fontSize: 35.sp,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFFF9A826),
+                    ),
+                  ),
+                ],
+              ),
+              GestureDetector(
+                onTap: _navigateToProfileView,
+                child: CircleAvatar(
+                  backgroundImage: widget.photoUrl.isNotEmpty
+                      ? NetworkImage(widget.photoUrl)
+                      : const AssetImage('lib/assets/personaicono.png')
+                          as ImageProvider,
+                  radius: 35.r,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 20.h),
+          if (!_isConnected)
+            Container(
+              color: Colors.redAccent,
+              padding: const EdgeInsets.all(8.0),
+              child: Row(
+                children: [
+                  const Icon(Icons.warning, color: Colors.white),
+                  const SizedBox(width: 8.0),
+                  Expanded(
+                      child: Text(
+                          'No Internet Connection, offers will not be updated',
+                          style:
+                              TextStyle(color: Colors.white, fontSize: 14.sp))),
+                ],
+              ),
+            ),
+          if (!_isConnected) SizedBox(height: 20.h),
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 15.w, vertical: 10.h),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFB5D5FF),
+                    borderRadius: BorderRadius.circular(10.r),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 10.r,
+                        spreadRadius: 2.r,
+                      ),
+                    ],
+                  ),
+                  child: GestureDetector(
+                    onTap: () {
+                      if (selectedPrice != null ||
+                          selectedMinutes != null ||
+                          selectedDateRange != null) {
+                        _clearFilters();
+                      } else {
+                        _openFilterModal();
+                      }
+                    },
+                    child: Row(
+                      children: [
+                        const Icon(Icons.search, color: Color(0xFF0C356A)),
+                        SizedBox(width: 10.w),
+                        const Expanded(
+                            child: Text('Search for a place...',
+                                style: TextStyle(color: Color(0xFF0C356A)))),
+                        Icon(
+                          (selectedPrice != null ||
+                                  selectedMinutes != null ||
+                                  selectedDateRange != null)
+                              ? Icons.close
+                              : Icons.menu,
+                          color: const Color(0xFF0C356A),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (selectedPrice != null ||
+              selectedMinutes != null ||
+              selectedDateRange != null)
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: 5.h),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    if (selectedPrice != null)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: Chip(
+                            label: Text('Price: \$${selectedPrice!.toInt()}',
+                                style:
+                                    const TextStyle(color: Color(0xFF0C356A))),
+                            backgroundColor: const Color(0xFFB5D5FF)),
+                      ),
+                    if (selectedMinutes != null)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: Chip(
+                            label: Text('Minutes: ${selectedMinutes!.toInt()}',
+                                style:
+                                    const TextStyle(color: Color(0xFF0C356A))),
+                            backgroundColor: const Color(0xFFB5D5FF)),
+                      ),
+                    if (selectedDateRange != null)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: Chip(
+                          label: Text(
+                              'Dates: ${DateFormat('MM/dd').format(selectedDateRange!.start)} - ${DateFormat('MM/dd').format(selectedDateRange!.end)}',
+                              style: const TextStyle(color: Color(0xFF0C356A))),
+                          backgroundColor: const Color(0xFFB5D5FF),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          SizedBox(height: 10.h),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _isConnected
+                  ? _fetchFreshData
+                  : () async => _showOfflineSnackbar(),
+              child: (propertyViewModel.isLoading ||
+                          offerViewModel.isLoading) &&
+                      sortedOffers.isEmpty
+                  ? const Center(child: CircularProgressIndicator())
+                  : sortedOffers.isEmpty
+                      ? const Center(
+                          child: Text('No properties match your filters.',
+                              style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF0C356A))))
+                      : ListView.builder(
+                          itemCount: sortedOffers.length,
+                          itemBuilder: (context, index) {
+                            final offerWithProperty = sortedOffers[index];
+                            final offer = offerWithProperty.offer;
+                            final property = offerWithProperty.property;
+
+                            return GestureDetector(
+                              onTap: () => _navigateToPropertyDetailView(
+                                  offerWithProperty),
+                              child: PropertyCard(
+                                imageUrls: property.photos, // Local image paths
+                                title: property.title,
+                                address: property.address,
+                                rooms: offer.num_rooms.toString(),
+                                baths: offer.num_baths.toString(),
+                                roommates: offer.roommates.toString(),
+                                price: offer.price_per_month.toString(),
+                              ),
+                            );
+                          },
+                        ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return FutureBuilder<void>(
       future: _loadingFuture,
       builder: (context, snapshot) {
@@ -265,212 +486,13 @@ class _ExploreViewState extends State<ExploreView> {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final sortedOffers = _sortOffers(offerViewModel.offersWithProperties);
-
         return Scaffold(
           backgroundColor: Colors.white,
-          body: Padding(
-            padding: EdgeInsets.all(25.w),
-            child: Column(
-              children: [
-                SizedBox(height: 2.h),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Welcome,',
-                          style: TextStyle(
-                            fontFamily: 'League Spartan',
-                            fontSize: 35.sp,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF0C356A),
-                          ),
-                        ),
-                        Text(
-                          firstName,
-                          style: TextStyle(
-                            fontFamily: 'League Spartan',
-                            fontSize: 35.sp,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFFF9A826),
-                          ),
-                        ),
-                      ],
-                    ),
-                    CircleAvatar(
-                      backgroundImage: widget.photoUrl.isNotEmpty
-                          ? NetworkImage(widget.photoUrl)
-                          : const AssetImage('lib/assets/personaicono.png')
-                              as ImageProvider,
-                      radius: 35.r,
-                    ),
-                  ],
-                ),
-                SizedBox(height: 20.h),
-                if (!_isConnected)
-                  Container(
-                    color: Colors.redAccent,
-                    padding: const EdgeInsets.all(8.0),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.warning, color: Colors.white),
-                        const SizedBox(width: 8.0),
-                        Expanded(
-                            child: Text(
-                                'No Internet Connection, offers will not be updated',
-                                style: TextStyle(
-                                    color: Colors.white, fontSize: 14.sp))),
-                      ],
-                    ),
-                  ),
-                if (!_isConnected) SizedBox(height: 20.h),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 15.w, vertical: 10.h),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFB5D5FF),
-                          borderRadius: BorderRadius.circular(10.r),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 10.r,
-                              spreadRadius: 2.r,
-                            ),
-                          ],
-                        ),
-                        child: GestureDetector(
-                          onTap: () {
-                            if (selectedPrice != null ||
-                                selectedMinutes != null ||
-                                selectedDateRange != null) {
-                              _clearFilters();
-                            } else {
-                              _openFilterModal();
-                            }
-                          },
-                          child: Row(
-                            children: [
-                              const Icon(Icons.search,
-                                  color: Color(0xFF0C356A)),
-                              SizedBox(width: 10.w),
-                              const Expanded(
-                                  child: Text('Search for a place...',
-                                      style:
-                                          TextStyle(color: Color(0xFF0C356A)))),
-                              Icon(
-                                (selectedPrice != null ||
-                                        selectedMinutes != null ||
-                                        selectedDateRange != null)
-                                    ? Icons.close
-                                    : Icons.menu,
-                                color: const Color(0xFF0C356A),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                if (selectedPrice != null ||
-                    selectedMinutes != null ||
-                    selectedDateRange != null)
-                  Padding(
-                    padding: EdgeInsets.symmetric(vertical: 5.h),
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          if (selectedPrice != null)
-                            Padding(
-                              padding: const EdgeInsets.only(right: 8.0),
-                              child: Chip(
-                                  label: Text(
-                                      'Price: \$${selectedPrice!.toInt()}',
-                                      style: const TextStyle(
-                                          color: Color(0xFF0C356A))),
-                                  backgroundColor: const Color(0xFFB5D5FF)),
-                            ),
-                          if (selectedMinutes != null)
-                            Padding(
-                              padding: const EdgeInsets.only(right: 8.0),
-                              child: Chip(
-                                  label: Text(
-                                      'Minutes: ${selectedMinutes!.toInt()}',
-                                      style: const TextStyle(
-                                          color: Color(0xFF0C356A))),
-                                  backgroundColor: const Color(0xFFB5D5FF)),
-                            ),
-                          if (selectedDateRange != null)
-                            Padding(
-                              padding: const EdgeInsets.only(right: 8.0),
-                              child: Chip(
-                                label: Text(
-                                    'Dates: ${DateFormat('MM/dd').format(selectedDateRange!.start)} - ${DateFormat('MM/dd').format(selectedDateRange!.end)}',
-                                    style: const TextStyle(
-                                        color: Color(0xFF0C356A))),
-                                backgroundColor: const Color(0xFFB5D5FF),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                SizedBox(height: 10.h),
-                Expanded(
-                  child: RefreshIndicator(
-                    onRefresh: _isConnected
-                        ? _fetchFreshData
-                        : () async => _showOfflineSnackbar(),
-                    child: (propertyViewModel.isLoading ||
-                                offerViewModel.isLoading) &&
-                            sortedOffers.isEmpty
-                        ? const Center(child: CircularProgressIndicator())
-                        : sortedOffers.isEmpty
-                            ? const Center(
-                                child: Text('No properties match your filters.',
-                                    style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFF0C356A))))
-                            : ListView.builder(
-                                itemCount: sortedOffers.length,
-                                itemBuilder: (context, index) {
-                                  final offerWithProperty = sortedOffers[index];
-                                  final offer = offerWithProperty.offer;
-                                  final property = offerWithProperty.property;
-
-                                  return GestureDetector(
-                                    onTap: () => _navigateToPropertyDetailView(
-                                        offerWithProperty),
-                                    child: PropertyCard(
-                                      imageUrls:
-                                          property.photos, // Local image paths
-                                      title: property.title,
-                                      address: property.address,
-                                      rooms: offer.num_rooms.toString(),
-                                      baths: offer.num_baths.toString(),
-                                      roommates: offer.roommates.toString(),
-                                      price: offer.price_per_month.toString(),
-                                    ),
-                                  );
-                                },
-                              ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          body: _pages()[currentPageIndex], // Display selected page
           bottomNavigationBar: NavigationBar(
             onDestinationSelected: (int index) {
               setState(() {
-                currentPageIndex = index;
+                currentPageIndex = index; // Update selected index
               });
             },
             indicatorColor: const Color(0xFFB5D5FF),
@@ -482,8 +504,8 @@ class _ExploreViewState extends State<ExploreView> {
                 label: 'Explore',
               ),
               NavigationDestination(
-                icon: Icon(Icons.home, color: Color(0xFF0C356A)),
-                label: 'Home',
+                icon: Icon(Icons.bookmark, color: Color(0xFF0C356A)),
+                label: 'Saved',
               ),
             ],
           ),
@@ -492,13 +514,19 @@ class _ExploreViewState extends State<ExploreView> {
     );
   }
 
-  void _showOfflineSnackbar() {
-    log.warning('User attempted to refresh while offline');
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-          content: Text('You are offline. Refresh is disabled.',
-              style: TextStyle(color: Colors.white)),
-          backgroundColor: Colors.redAccent),
-    );
+  List<OfferProperty> _sortOffers(List<OfferProperty> offers) {
+    if (userRoommatePreference == null) return offers;
+
+    offers.sort((a, b) {
+      if (userRoommatePreference == true) {
+        return b.offer.roommates.compareTo(a.offer.roommates);
+      } else {
+        return a.offer.roommates.compareTo(b.offer.roommates);
+      }
+    });
+
+    log.info(
+        'Offers sorted based on roommate preference: $userRoommatePreference');
+    return offers;
   }
 }

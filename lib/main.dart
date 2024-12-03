@@ -1,4 +1,5 @@
 import 'package:andlet/analytics/analytics_engine.dart';
+import 'package:andlet/view/auth/views/login_view.dart'; // Import your login view
 import 'package:andlet/view/common/welcome_page.dart';
 import 'package:andlet/view_models/offer_view_model.dart';
 import 'package:flutter/material.dart';
@@ -46,11 +47,14 @@ Future<void> _initializeApp() async {
   Hive.registerAdapter(GeoPointAdapter());
   Hive.registerAdapter(UserAdapter());
 
+
   await Hive.openBox<Property>('properties');
   await Hive.openBox<User>('agent_cache');
   await Hive.openBox<Offer>('offers');
   await Hive.openBox<OfferProperty>('offer_properties');
   await Hive.openBox<User>('user_cache');
+  await Hive.openBox<OfferProperty>('saved_properties');
+
 
   // Load environment variables from .env file
   await dotenv.load(fileName: ".env");
@@ -104,7 +108,18 @@ class MyApp extends StatelessWidget {
               theme: ThemeData(
                 primarySwatch: Colors.blue,
               ),
-              home: const WelcomePage(),
+              // Define your routes
+              initialRoute: '/welcome',
+              routes: {
+                '/welcome': (context) => const WelcomePage(),
+                '/login': (context) => const LoginView(),
+              },
+              // Provide fallback for unknown routes
+              onUnknownRoute: (settings) {
+                return MaterialPageRoute(
+                  builder: (context) => const WelcomePage(),
+                );
+              },
             ),
           ),
         );
