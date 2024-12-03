@@ -114,6 +114,7 @@ class PropertyDetailViewState extends State<PropertyDetailView> {
       } else {
         // Save logic
         await offerViewModel.saveOffer(userEmail, offerId);
+        await offerViewModel.fetchSavedPropertiesForUser(widget.userEmail);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Offer saved successfully!')),
         );

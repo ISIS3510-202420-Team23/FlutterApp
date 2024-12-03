@@ -272,61 +272,7 @@ class _SavedPropertiesViewState extends State<SavedPropertiesView> {
                   ),
                 if (!_isConnected) SizedBox(height: 20.h),
 
-                // Search/Filter Bar
-                Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 15.w, vertical: 10.h),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFB5D5FF),
-                          borderRadius: BorderRadius.circular(10.r),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 10.r,
-                              spreadRadius: 2.r,
-                            ),
-                          ],
-                        ),
-                        child: GestureDetector(
-                          onTap: () {
-                            if (selectedPrice != null ||
-                                selectedMinutes != null ||
-                                selectedDateRange != null) {
-                              _clearFilters();
-                            } else {
-                              _openFilterModal();
-                            }
-                          },
-                          child: Row(
-                            children: [
-                              const Icon(Icons.search,
-                                  color: Color(0xFF0C356A)),
-                              SizedBox(width: 10.w),
-                              const Expanded(
-                                child: Text(
-                                  'Search for a place...',
-                                  style: TextStyle(color: Color(0xFF0C356A)),
-                                ),
-                              ),
-                              Icon(
-                                (selectedPrice != null ||
-                                        selectedMinutes != null ||
-                                        selectedDateRange != null)
-                                    ? Icons.close
-                                    : Icons.menu,
-                                color: const Color(0xFF0C356A),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 20.h),
+                SizedBox(height: 10.h),
                 // "Your Saved Places" Label
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: 10.w),
