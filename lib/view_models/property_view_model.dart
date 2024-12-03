@@ -65,8 +65,8 @@ class PropertyViewModel extends ChangeNotifier {
           List<Property> batchProperties = _mapSnapshotToProperties(snapshot);
 
           // Ensure images are downloaded before adding to properties
-          for (var property in batchProperties) {
-            await _downloadImages(property);
+          for (var i = 0; i < batchProperties.length; i++) {
+            await _downloadImages(batchProperties[i]);
           }
 
           _properties.addAll(batchProperties);
@@ -129,7 +129,8 @@ class PropertyViewModel extends ChangeNotifier {
     final imageDir = Directory(directory.path);
     if (await imageDir.exists()) {
       final images = imageDir.listSync();
-      for (var image in images) {
+      for (var i = 0; i < images.length; i++) {
+        var image = images[i];
         if (image is File) await image.delete();
       }
     }
@@ -138,7 +139,8 @@ class PropertyViewModel extends ChangeNotifier {
   List<Property> _mapSnapshotToProperties(QuerySnapshot snapshot) {
     List<Property> properties = [];
 
-    for (var doc in snapshot.docs) {
+    for (var i = 0; i < snapshot.docs.length; i++) {
+      final doc = snapshot.docs[i];
       final propertyData = doc.data() as Map<String, dynamic>;
       properties.addAll(propertyData.entries.map((entry) {
         final id = int.tryParse(entry.key) ?? -1;

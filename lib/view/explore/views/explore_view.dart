@@ -62,9 +62,11 @@ class _ExploreViewState extends State<ExploreView> {
   }
 
   Future<void> _initializeData() async {
-    await _initializeConnectivity();
-    await _fetchUserPreferences();
-    _loadFromCache(); // Load cached data first for faster UI updates
+    await Future.wait([
+      _initializeConnectivity(),
+      _fetchUserPreferences(),
+      _loadFromCache(),
+    ]);
     if (_isConnected) {
       _loadingFuture = _fetchFreshData(); // Fetch fresh data in background
     }

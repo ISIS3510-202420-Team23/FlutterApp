@@ -61,7 +61,7 @@ class OfferViewModel extends ChangeNotifier {
     } catch (e, stackTrace) {
       log.severe('Failed to save offer $offerId for user $userEmail: $e', e,
           stackTrace);
-      throw e; // Propagate the error
+      rethrow; // Propagate the error
     }
   }
 
@@ -90,9 +90,9 @@ class OfferViewModel extends ChangeNotifier {
 
       notifyListeners();
 
-      print('Offer $offerId unsaved successfully for user $userEmail');
+      log.info('Offer $offerId unsaved successfully for user $userEmail');
     } catch (e) {
-      print('Failed to unsave offer: $e');
+      log.warning('Failed to unsave offer: $e');
       throw Exception('Failed to unsave offer');
     }
   }
@@ -108,9 +108,9 @@ class OfferViewModel extends ChangeNotifier {
 
         if (userDoc.exists) {
           final Map<String, dynamic> savedData =
-          userDoc.data() as Map<String, dynamic>;
+              userDoc.data() as Map<String, dynamic>;
           List<int> savedOfferIds =
-          savedData.keys.map((id) => int.parse(id)).toList();
+              savedData.keys.map((id) => int.parse(id)).toList();
 
           // Fetch all offers and properties
           await fetchOffersWithFilters();
@@ -118,7 +118,7 @@ class OfferViewModel extends ChangeNotifier {
           // Filter saved properties
           _savedOfferProperties = _offersWithProperties
               .where((offerProperty) =>
-              savedOfferIds.contains(offerProperty.offer.offerId))
+                  savedOfferIds.contains(offerProperty.offer.offerId))
               .toList();
 
           // Cache saved properties locally
@@ -143,14 +143,16 @@ class OfferViewModel extends ChangeNotifier {
   Future<void> _cacheSavedProperties() async {
     await _savedPropertiesBox.clear(); // Clear previous cache
     await _savedPropertiesBox.addAll(_savedOfferProperties);
-    log.info('Cached ${_savedOfferProperties.length} saved properties locally.');
+    log.info(
+        'Cached ${_savedOfferProperties.length} saved properties locally.');
   }
 
   /// Load saved properties from local cache
   Future<void> _loadSavedPropertiesFromCache() async {
     if (_savedPropertiesBox.isNotEmpty) {
       _savedOfferProperties = _savedPropertiesBox.values.toList();
-      log.info('Loaded ${_savedOfferProperties.length} saved properties from cache.');
+      log.info(
+          'Loaded ${_savedOfferProperties.length} saved properties from cache.');
     } else {
       log.warning('No cached saved properties available.');
       _savedOfferProperties = [];
@@ -295,7 +297,9 @@ class OfferViewModel extends ChangeNotifier {
           var offersData = offersDoc.data() as Map<String, dynamic>;
           List<OfferProperty> tempOffersWithProperties = [];
 
-          for (var entry in offersData.entries) {
+          var entries = offersData.entries.toList();
+          for (var i = 0; i < entries.length; i++) {
+            var entry = entries[i];
             var offerData = entry.value;
             if (offerData['is_active'] == true) {
               String propertyId = offerData['id_property'].toString();
@@ -364,8 +368,10 @@ class OfferViewModel extends ChangeNotifier {
       var propertiesData = snapshot.data() as Map<String, dynamic>;
       log.info('Mapping properties from data: $propertiesData');
 
-      for (var entry in propertiesData.entries) {
+      var entries = propertiesData.entries.toList();
+      for (var i = 0; i < entries.length; i++) {
         try {
+          final entry = entries[i];
           final propertyId = entry.key;
           final propertyData = entry.value as Map<String, dynamic>;
           Property? property =
@@ -374,7 +380,7 @@ class OfferViewModel extends ChangeNotifier {
             propertyMap[propertyId] = property;
           }
         } catch (e) {
-          log.warning("Error mapping property with key ${entry.key}: $e");
+          log.warning("Error mapping property with key ${entries[i].key}: $e");
         }
       }
     } else {
